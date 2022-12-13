@@ -7,8 +7,60 @@
     <title>Document</title>
 </head>
 <body>
-    <canvas id="debugger" width="1200" height="600" style="border:1px dashed red"></canvas>
+    <canvas id="initial" width="1200" height="600" style="border:1px dashed red"></canvas>
+    <canvas id="final" width="1200" height="600" style="border:1px dashed red"></canvas>
     <script>
+
+const networkDebugger = (nn, canvas) => {
+            canvas.font = "10px Arial";
+            const LEFT_MARGIN = 45,
+                TOP_MARGIN = 45,
+                NEURON_RADIUS = 40,
+                NEURON_PADDING_X = 220,
+                NEURON_PADDING_Y = 70;
+            for(let i = 0; i < nn.layers.length; i++)
+                for(let j = 0; j < nn.layers[i].neurons.length; j++){
+                    const neuron = nn.layers[i].neurons[j];
+                    const left = LEFT_MARGIN + i * (NEURON_PADDING_X + NEURON_RADIUS);
+                    const top = TOP_MARGIN + j * (NEURON_PADDING_Y + NEURON_RADIUS);
+
+                    
+                    canvas.beginPath();
+                    canvas.strokeStyle = `rgb(0, 0, 0)`;
+                    canvas.arc(left, top, NEURON_RADIUS, 1/2*Math.PI, 3/2*Math.PI);
+                    canvas.arc(left, top, NEURON_RADIUS, 1/2*Math.PI, 3/2*Math.PI, true);
+                    canvas.stroke();
+
+                    const red = 255 * (neuron.weights[0] + 1) / 2;
+                    const blue = 255 - 255 * (neuron.weights[0] + 1) / 2;
+                    
+                    canvas.fillStyle = `rgb(${red}, 0, ${blue})`;
+                    canvas.fillText(neuron.weights[0].toFixed(3), left-NEURON_RADIUS+5, top-5);
+                    canvas.fillStyle = `rgb(0, 0, 0)`;
+                    if(neuron.h !== undefined && neuron.o !== undefined){
+                        canvas.fillText(neuron.h.toFixed(3), left-NEURON_RADIUS+5, top+5);
+                        canvas.fillText(neuron.o.toFixed(3), left+5, top);
+                        if(nn.layers[i].error !== undefined)
+                            canvas.fillText(nn.layers[i].error[j].toFixed(6), left-20, top+NEURON_RADIUS+10)
+                    }
+                    
+                    
+
+                    if(i != 0){
+                        for(let k = 0; k < nn.layers[i-1].neurons.length; k++){
+                            //Loop each neuron in prev layer
+                            canvas.beginPath();
+                            const red = 255 * (neuron.weights[k+1] + 1) / 2;
+                            const blue = 255 - 255 * (neuron.weights[k+1] + 1) / 2;
+                            canvas.moveTo(left - NEURON_RADIUS, top);
+                            canvas.lineTo(LEFT_MARGIN + (i-1) * (NEURON_PADDING_X + NEURON_RADIUS) + NEURON_RADIUS, TOP_MARGIN + k * (NEURON_PADDING_Y + NEURON_RADIUS));
+                            canvas.strokeStyle = `rgb(${red}, 0, ${blue})`;
+                            canvas.stroke();
+                        }
+                    }
+
+                }
+        }
         
         class ReLU{
             static f(x){
@@ -37,7 +89,7 @@
 
         class Neuron{
             constructor(inputSize){
-                this.weights = [Math.random() * 2 - 1]; //Weights[0] is bias
+                this.weights = [Math.random()]; //Weights[0] is bias
                 for(let i = 0; i < inputSize; i++)
                     this.weights.push(Math.random() * 2 - 1); //One weight for each input
             }
@@ -110,61 +162,77 @@
                 this.out = layerOutput;
                 return this;
             }
-        }
 
-        let nn = new NeuralNetwork([2, 4, 4, 1]);
+            train(predictors, classes){
+                let epochs = 10000;
+                let learningRate = 0.1;
+                /*
+                https://brilliant.org/wiki/backpropagation/
+                https://brilliant.org/wiki/feedforward-neural-networks/
+                */
+                
+                for(let e = 0; e < epochs; e++){
+                    for(let recordIdx = 0; recordIdx < predictors.length; recordIdx++){
+                        //Feedforward
+                        this.forward(predictors[recordIdx]);
 
-        nn.forward([1, 0]);
-
-        let canvas = document.getElementById("debugger").getContext("2d");
-        canvas.font = "10px Arial";
-
-        const networkDebugger = nn => {
-            const LEFT_MARGIN = 45,
-                TOP_MARGIN = 45,
-                NEURON_RADIUS = 40,
-                NEURON_PADDING_X = 200,
-                NEURON_PADDING_Y = 50;
-            for(let i = 0; i < nn.layers.length; i++)
-                for(let j = 0; j < nn.layers[i].neurons.length; j++){
-                    const neuron = nn.layers[i].neurons[j];
-                    const left = LEFT_MARGIN + i * (NEURON_PADDING_X + NEURON_RADIUS);
-                    const top = TOP_MARGIN + j * (NEURON_PADDING_Y + NEURON_RADIUS);
-
-                    
-                    canvas.beginPath();
-                    canvas.strokeStyle = `rgb(0, 0, 0)`;
-                    canvas.arc(left, top, NEURON_RADIUS, 1/2*Math.PI, 3/2*Math.PI);
-                    canvas.arc(left, top, NEURON_RADIUS, 1/2*Math.PI, 3/2*Math.PI, true);
-                    canvas.stroke();
-
-                    const red = 255 * (neuron.weights[0] + 1) / 2;
-                    const blue = 255 - 255 * (neuron.weights[0] + 1) / 2;
-                    
-                    canvas.fillStyle = `rgb(${red}, 0, ${blue})`;
-                    canvas.fillText(neuron.weights[0].toFixed(3), left-NEURON_RADIUS+5, top-5);
-                    canvas.fillStyle = `rgb(0, 0, 0)`;
-                    canvas.fillText(neuron.h.toFixed(3), left-NEURON_RADIUS+5, top+5);
-                    canvas.fillText(neuron.o.toFixed(3), left+5, top);
-                    
-
-                    if(i != 0){
-                        for(let k = 0; k < nn.layers[i-1].neurons.length; k++){
-                            //Loop each neuron in prev layer
-                            canvas.beginPath();
-                            const red = 255 * (neuron.weights[k+1] + 1) / 2;
-                            const blue = 255 - 255 * (neuron.weights[k+1] + 1) / 2;
-                            canvas.moveTo(left - NEURON_RADIUS, top);
-                            canvas.lineTo(LEFT_MARGIN + (i-1) * (NEURON_PADDING_X + NEURON_RADIUS) + NEURON_RADIUS, TOP_MARGIN + k * (NEURON_PADDING_Y + NEURON_RADIUS));
-                            canvas.strokeStyle = `rgb(${red}, 0, ${blue})`;
-                            canvas.stroke();
+                        //Last layer error
+                        const lastLayer = this.layers[this.layers.length-1];
+                        lastLayer.error = [];
+                        for(let i = 0; i < lastLayer.neurons.length; i++){ //lastLayer.neurons.length same as classes[recordIdx].length
+                            const neuron = lastLayer.neurons[i];
+                            const error = lastLayer.activation.d(neuron.h) * (neuron.o - classes[recordIdx][i]);
+                            lastLayer.error.push(error);
                         }
-                    }
 
+                        //Hidden layers error
+                        for(let i = this.layers.length-2; i > 0; i--){
+                            const layer = this.layers[i];
+                            const nextLayer = this.layers[i+1];
+
+                            layer.error = [];
+                            for(let j = 0; j < layer.neurons.length; j++){
+                                const neuron = layer.neurons[j];
+                                let error = layer.activation.d(neuron.h);
+                                let s = 0;
+
+                                for(let k = 0; k < nextLayer.neurons.length; k++){                                    
+                                    const nextLayerNeuron = nextLayer.neurons[k];
+                                    s += nextLayerNeuron.weights[j+1] * nextLayer.error[k]; 
+                                }
+                                layer.error.push(error * s);
+                            }                            
+                        }
+                    } 
                 }
+            }
         }
 
-        networkDebugger(nn);
+        let nn = new NeuralNetwork([2, 2, 1]);
+
+        /*XOR Data*/
+        const d = [
+            {X: [0, 0], Y: [0]},
+            {X: [0, 1], Y: [1]},
+            {X: [1, 0], Y: [1]},
+            {X: [1, 1], Y: [0]},
+        ]
+
+        const predictors = d.map(record => record.X);
+        const classes = d.map(record => record.Y);
+
+
+        let canvas = document.getElementById("initial").getContext("2d");
+        let canvas2 = document.getElementById("final").getContext("2d");
+        networkDebugger(nn, canvas);
+        nn.train(predictors, classes);
+        networkDebugger(nn, canvas2);
+
+        for(let i = 0; i < d.length; i++){
+            console.log(`predicted: ${nn.forward(d[i].X).out}, expexted: ${d[i].Y}`)
+        }
+
+        
     </script>
 </body>
 </html>
