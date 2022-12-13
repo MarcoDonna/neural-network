@@ -148,8 +148,8 @@ const networkDebugger = (nn, canvas) => {
                 this.layers = [];                
                 this.layers.push(new InputLayer(shape[0]));
                 for(let i = 1; i < shape.length-1; i++)
-                    this.layers.push(new Layer(shape[i], shape[i-1], ReLU))
-                this.layers.push(new OutputLayer(shape[shape.length-1], shape[shape.length-2], ReLU));                    
+                    this.layers.push(new Layer(shape[i], shape[i-1], Sigmoid))
+                this.layers.push(new OutputLayer(shape[shape.length-1], shape[shape.length-2], Sigmoid));                    
             }
 
             forward(inputVector){
@@ -163,59 +163,79 @@ const networkDebugger = (nn, canvas) => {
                 return this;
             }
 
-            train(predictors, classes){
-                let epochs = 10000;
-                let learningRate = 0.1;
+            batchTrain(predictors, classes, learningRate){
                 /*
-                https://brilliant.org/wiki/backpropagation/
-                https://brilliant.org/wiki/feedforward-neural-networks/
+                TODO: combine partial derivatives
                 */
-                
-                for(let e = 0; e < epochs; e++){
-                    for(let recordIdx = 0; recordIdx < predictors.length; recordIdx++){
-                        //Feedforward
-                        this.forward(predictors[recordIdx]);
+                for(let recordIdx = 0; recordIdx < predictors.length; recordIdx++){
+                    //Feedforward
+                    this.forward(predictors[recordIdx]);
 
-                        //Last layer error
-                        const lastLayer = this.layers[this.layers.length-1];
-                        lastLayer.error = [];
-                        for(let i = 0; i < lastLayer.neurons.length; i++){ //lastLayer.neurons.length same as classes[recordIdx].length
-                            const neuron = lastLayer.neurons[i];
-                            const error = lastLayer.activation.d(neuron.h) * (neuron.o - classes[recordIdx][i]);
-                            lastLayer.error.push(error);
+                    //Output layer error
+                    const layer = this.layers[this.layers.length-1]
+                    layer.error = [];                    
+                    for(let nrnIdx = 0; nrnIdx < layer.neurons.length; nrnIdx++){
+                        const neuron = this.layers[this.layers.length-1].neurons[nrnIdx];
+                        //console.log(`${layer.activation.d(neuron.h)} * (${this.out[nrnIdx]} - ${classes[recordIdx][nrnIdx]})`)
+                        layer.error.push(layer.activation.d(neuron.h) * (this.out[nrnIdx] - classes[recordIdx][nrnIdx]));
+                    }
+                    //console.log(layer.error);
+
+                    //Hidden layer error
+                    for(let lyrIdx = this.layers.length-2; lyrIdx > 0; lyrIdx--){
+                        const layer = this.layers[lyrIdx];
+                        const nextLayer = this.layers[lyrIdx+1];
+                        layer.error = [];
+
+                        for(let nrnIdx = 0; nrnIdx < layer.neurons.length; nrnIdx++){
+                            const neuron = layer.neurons[nrnIdx];
+                            
+                            let err = layer.activation.d(neuron.h)
+                            let sum = 0;
+
+                            for(let i = 0; i < nextLayer.neurons.length; i++){  
+                                sum += nextLayer.neurons[i].weights[nrnIdx + 1] * nextLayer.error[i];
+                            }
+                            layer.error.push(err * sum);
                         }
+                    }
 
-                        //Hidden layers error
-                        for(let i = this.layers.length-2; i > 0; i--){
-                            const layer = this.layers[i];
-                            const nextLayer = this.layers[i+1];
-
-                            layer.error = [];
-                            for(let j = 0; j < layer.neurons.length; j++){
-                                const neuron = layer.neurons[j];
-                                let error = layer.activation.d(neuron.h);
-                                let s = 0;
-
-                                for(let k = 0; k < nextLayer.neurons.length; k++){                                    
-                                    const nextLayerNeuron = nextLayer.neurons[k];
-                                    s += nextLayerNeuron.weights[j+1] * nextLayer.error[k]; 
-                                }
-                                layer.error.push(error * s);
-                            }                            
+                    //Partial Error
+                    for(let lyrIdx = 1; lyrIdx < this.layers.length; lyrIdx++){
+                        const layer = this.layers[lyrIdx];
+                        const prevLayer = this.layers[lyrIdx-1];
+                        for(let nrnIdx = 0; nrnIdx < layer.neurons.length; nrnIdx++){
+                            const neuron = layer.neurons[nrnIdx];
+                            neuron.weightsError = [];
+                            for(let wghIdx = 0; wghIdx < neuron.weights.length; wghIdx++){
+                                if(wghIdx == 0)
+                                    neuron.weightsError.push(layer.error[nrnIdx]);
+                                else
+                                    neuron.weightsError.push(layer.error[nrnIdx] * prevLayer.neurons[wghIdx-1].o);
+                                   
+                                neuron.weights[wghIdx] -= learningRate * neuron.weightsError[wghIdx]//Remove this and use combined derivatives
+                            }
                         }
-                    } 
+                    }
                 }
+            }
+
+            train(predictors, classes){
+                let epochs = 20000;
+                let learningRate = 0.5;
+                for(let e = 0; e < epochs; e++)
+                    this.batchTrain(predictors, classes, learningRate);
             }
         }
 
-        let nn = new NeuralNetwork([2, 2, 1]);
+        let nn = new NeuralNetwork([2, 2, 2]);
 
         /*XOR Data*/
         const d = [
-            {X: [0, 0], Y: [0]},
-            {X: [0, 1], Y: [1]},
-            {X: [1, 0], Y: [1]},
-            {X: [1, 1], Y: [0]},
+            {X: [0, 0], Y: [1, 0]},
+            {X: [0, 1], Y: [0, 1]},
+            {X: [1, 0], Y: [0, 1]},
+            {X: [1, 1], Y: [1, 0]},
         ]
 
         const predictors = d.map(record => record.X);
@@ -229,7 +249,7 @@ const networkDebugger = (nn, canvas) => {
         networkDebugger(nn, canvas2);
 
         for(let i = 0; i < d.length; i++){
-            console.log(`predicted: ${nn.forward(d[i].X).out}, expexted: ${d[i].Y}`)
+            console.log(`predicted: ${nn.forward(d[i].X).out.map(i => i < 0.5 ? 0 : 1)}, expected: ${d[i].Y}`)
         }
 
         
