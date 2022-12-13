@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        
+        class ReLU{
+            static f(x){
+                return x > 0 ? x : 0;
+            }
+
+            static d(x){
+                return x > 0 ? 1 : 0;
+            }
+        }
+
+        class Sigmoid{
+            static f(x){
+                return 1 / (1 + Math.exp(-x));
+            }
+
+            static d(x){
+                return this.f(x) * (1 - this.f(x));
+            }
+        }
+
+        class Linear{
+            static f(x){return x}
+            static d(x){return 1}
+        }
+
+        class Neuron{
+            constructor(inputSize){
+                this.weights = [Math.random() * 2 - 1];
+                for(let i = 0; i < inputSize; i++)
+                    this.weights.push(Math.random() * 2 - 1);
+            }
+
+            forward(inputVector, activation){
+                this.h = this.weights[0];
+                for(let i = 1; i < this.weights.length; i++)
+                    this.h += inputVector[i-1] * this.weights[i];
+                this.o = activation.f(this.h);
+                return this;
+            }
+        }
+
+        class Layer{
+            constructor(neurons, inputs, activation){
+                this.neurons = [];
+                this.activation = activation;
+
+                for(let i = 0; i < neurons; i++)
+                    this.neurons.push(new Neuron(inputs));
+            }
+
+            forward(input){
+                for(let i = 0; i < this.neurons.length; i++)
+                    this.neurons[i].forward(input, this.activation);
+            }
+        }
+
+        class OutputLayer extends Layer{
+            constructor(neurons, inputs, activation){
+                super(neurons, inputs, activation);
+            }
+        }
+
+        class InputLayer extends Layer{
+            constructor(inputs){
+                super(inputs, 1, Linear);
+
+                for(let i = 0; i < this.neurons.length; i++)
+                    for(let j = 0; j < this.neurons[i].weights.length; j++)
+                        if(j == 0)
+                            this.neurons[i].weights[j] = 0;
+                        else
+                            this.neurons[i].weights[j] = 1;
+            }
+        }
+
+        class NeuralNetwork{
+            constructor(shape){
+                this.layers = [];                
+                this.layers.push(new InputLayer(shape[0]));
+                for(let i = 1; i < shape.length-1; i++)
+                    this.layers.push(new Layer(shape[i], shape[i-1], ReLU))
+                this.layers.push(new OutputLayer(shape[shape.length-1], shape[shape.length-2], ReLU));                    
+            }
+
+            forward(inputVector){
+                let layerOutput = inputVector;
+                for(let i = 0; i < this.layers.length; i++){
+                    this.layers[i].forward(layerOutput);
+                    layerOutput = this.layers[i].neurons.map(neuron => neuron.o);                    
+                }
+                this.out = layerOutput;
+                return this;
+            }
+        }
+
+        let nn = new NeuralNetwork([2, 4, 4, 1]);
+
+        nn.forward([1, 0]);
+        console.log(nn.out)
+    </script>
+</body>
+</html>
