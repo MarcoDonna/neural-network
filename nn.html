@@ -5,6 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.2/jquery.min.js" integrity="sha512-tWHlutFnuG0C6nQRlpvrEhE4QpkG1nn2MOUMWmUeRePl4e3Aki0VB6W1v3oLjFtd0hVOtRQ9PHpSfN6u6/QXkQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="nnVis.js"></script>
 </head>
 <body>
@@ -200,9 +201,77 @@
             }
         }
 
-        let nn = new NeuralNetwork([2, 3, 3, 2]);
+        $.ajax({
+            method: "GET",
+            url: "https://gist.githubusercontent.com/netj/8836201/raw/6f9306ad21398ea43cba4f7d537619d0e07d5ae3/iris.csv"
+        })
+        .done(data => {
+            data = data.replace("", "").split("\n").map(row => row.split(",").map(cell => cell.replace(/\"/g, "")));
+            data.shift();
+            data = 
 
-        /*XOR Data*/
+            data = shuffle(data).map(row => [row[0], row[1], row[2], row[3], [1 * (row[4] == "Setosa"), 1 * (row[4] == "Virginica"), 1 * (row[4] == "Versicolor")]]);
+
+            let predictors= [], classes = [];
+
+            for(let i = 0; i < data.length; i++){
+                let row = data[i];
+                predictors.push([row[0], row[1], row[2], row[3]]);
+                classes.push(row[4])
+            }
+
+            const nn = new NeuralNetwork([4, 5, 5, 3]);
+            nn.train(head(predictors, 0.7), head(classes, 0.7), 20000, 0.01, 5);
+
+            let canvas = document.getElementById("network").getContext("2d");
+            const debuggerConfig = {
+                LEFT_MARGIN: 50,
+                TOP_MARGIN: 50,
+                NEURON_RADIUS: 50,
+                NEURON_PADDING_X: 180,
+                NEURON_PADDING_Y: 70
+            }
+
+            networkDebugger(nn, canvas, debuggerConfig);
+
+            let testPred = tail(predictors, 0.4), testClass = tail(classes, 0.4);
+
+            for(let i = 0; i < testClass.length; i++)
+                console.log(`${nn.forward(testPred[i]).out.map(i => i < 0.5 ? 0 : 1)}, Actual: ${testClass[i]}`)
+        })
+        .fail(err => console.log(err));
+
+
+        function shuffle(data){
+            for(let i = 0; i < data.length; i++){
+                let rand = Math.floor(Math.random() * data.length);
+                let temp = data[i];
+                data[i] = data[rand];
+                data[rand] = data[i];
+            }
+            return data;
+        }
+
+        function invert(data){
+            let ret = [];
+            for(let i = 0; i < data.length; i++){
+                ret.push(data[data.length-i-1]);
+            }
+            return ret;
+        }
+        
+        function head(data, n){
+            return data.splice(0, Math.ceil(data.length * n));
+        }
+
+        function tail(data, n){
+            return head(invert(data), n);
+        }
+
+
+
+        /*let nn = new NeuralNetwork([2, 3, 3, 2]);
+
         const d = [
             {X: [0, 0], Y: [1, 0]},
             {X: [0, 1], Y: [0, 1]},
@@ -228,7 +297,7 @@
 
         for(let i = 0; i < d.length; i++){
             console.log(`predicted: ${nn.forward(d[i].X).out.map(i => i < 0.5 ? 0 : 1)}, expected: ${d[i].Y}`)
-        }
+        }*/
 
     </script>
 </body>
