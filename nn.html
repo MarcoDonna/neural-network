@@ -7,256 +7,82 @@
     <title>Document</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.2/jquery.min.js" integrity="sha512-tWHlutFnuG0C6nQRlpvrEhE4QpkG1nn2MOUMWmUeRePl4e3Aki0VB6W1v3oLjFtd0hVOtRQ9PHpSfN6u6/QXkQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="nnVis.js"></script>
+    <script src="activationFunctions.js"></script>
+    <script src="neuralNetwork.js"></script>
+    <style>
+        .metrics{
+            display: flex;
+        }
+
+        table{
+            font-size: 20px;
+            margin: 30px;
+            border-spacing: 0;
+        }
+
+        table tr td{
+            border: 1px solid black;
+            width: 40px;
+            height: 40px;
+            text-align: center;            
+        }
+
+        #training{
+            color: red;
+        }
+
+        .parameters{
+            font-size: 22px;
+        }
+    </style>
 </head>
 <body>
-    <canvas id="network" width="1200" height="600" style="border:1px dashed red"></canvas>
-    <script>        
-        class ReLU{
-            static f(x){
-                return x > 0 ? x : 0;
-            }
-
-            static d(x){
-                return x > 0 ? 1 : 0;
-            }
-        }
-
-        class Sigmoid{
-            static f(x){
-                return 1 / (1 + Math.exp(-x));
-            }
-
-            static d(x){
-                return this.f(x) * (1 - this.f(x));
-            }
-        }
-
-        class Linear{
-            static f(x){return x}
-            static d(x){return 1}
-        }
-
-        class Neuron{
-            constructor(inputSize){
-                this.weightsError = []; //Used to calc batch error
-                this.weights = [Math.random()]; //Weights[0] is bias
-                for(let i = 0; i < inputSize; i++)
-                    this.weights.push(Math.random() * 2 - 1); //One weight for each input
-            }
-
-            forward(inputVector, activation){
-                this.h = this.weights[0];
-                for(let i = 1; i < this.weights.length; i++)
-                    this.h += inputVector[i-1] * this.weights[i]; //Product sum plus bias
-                this.o = activation.f(this.h); //Node output
-                return this;
-            }
-        }
-
-        class Layer{
-            constructor(neurons, inputs, activation){
-                this.neurons = [];
-                this.activation = activation;
-
-                for(let i = 0; i < neurons; i++)
-                    this.neurons.push(new Neuron(inputs));
-            }
-
-            forward(input){
-                for(let i = 0; i < this.neurons.length; i++)
-                    this.neurons[i].forward(input, this.activation);
-            }
-        }
-
-        class OutputLayer extends Layer{
-            constructor(neurons, inputs, activation){
-                super(neurons, inputs, activation);
-            }
-        }
-
-        class InputLayer extends Layer{
-            constructor(inputs){
-                super(inputs, 1, Linear);
-
-                for(let i = 0; i < this.neurons.length; i++)
-                    for(let j = 0; j < this.neurons[i].weights.length; j++)
-                        //Initialize weight to 1, bias to 0 with linear activation function to pass inputs without any transformation
-                        if(j == 0)
-                            this.neurons[i].weights[j] = 0;
-                        else
-                            this.neurons[i].weights[j] = 1;
-            }
-
-            forward(inputs){
-                for(let i = 0; i < this.neurons.length; i++)
-                    this.neurons[i].forward([inputs[i]], this.activation);
-            }
-        }
-
-        class NeuralNetwork{
-            constructor(shape){
-                this.layers = [];                
-                this.layers.push(new InputLayer(shape[0]));
-                for(let i = 1; i < shape.length-1; i++)
-                    this.layers.push(new Layer(shape[i], shape[i-1], Sigmoid))
-                this.layers.push(new OutputLayer(shape[shape.length-1], shape[shape.length-2], Sigmoid));                    
-            }
-
-            forward(inputVector){
-                let layerOutput = inputVector;
-                for(let i = 0; i < this.layers.length; i++){
-                    //Prev layer output becomes input
-                    this.layers[i].forward(layerOutput);
-                    layerOutput = this.layers[i].neurons.map(neuron => neuron.o);                    
-                }
-                this.out = layerOutput;
-                return this;
-            }
-
-            batchTrain(predictors, classes, learningRate){
-                for(let recordIdx = 0; recordIdx < predictors.length; recordIdx++){
-                    //Feedforward
-                    this.forward(predictors[recordIdx]);
-
-                    //Output layer error
-                    const layer = this.layers[this.layers.length-1]
-                    layer.error = [];                    
-                    for(let nrnIdx = 0; nrnIdx < layer.neurons.length; nrnIdx++){
-                        const neuron = this.layers[this.layers.length-1].neurons[nrnIdx];
-                        //console.log(`${layer.activation.d(neuron.h)} * (${this.out[nrnIdx]} - ${classes[recordIdx][nrnIdx]})`)
-                        layer.error.push(layer.activation.d(neuron.h) * (this.out[nrnIdx] - classes[recordIdx][nrnIdx]));
-                    }
-
-                    //Hidden layer error
-                    for(let lyrIdx = this.layers.length-2; lyrIdx > 0; lyrIdx--){
-                        const layer = this.layers[lyrIdx];
-                        const nextLayer = this.layers[lyrIdx+1];
-                        layer.error = [];
-
-                        for(let nrnIdx = 0; nrnIdx < layer.neurons.length; nrnIdx++){
-                            const neuron = layer.neurons[nrnIdx];
-                            
-                            let err = layer.activation.d(neuron.h)
-                            let sum = 0;
-
-                            for(let i = 0; i < nextLayer.neurons.length; i++){  
-                                sum += nextLayer.neurons[i].weights[nrnIdx + 1] * nextLayer.error[i];
-                            }
-                            layer.error.push(err * sum);
-                        }
-                    }
-
-                    //Partial Error
-                    for(let lyrIdx = 1; lyrIdx < this.layers.length; lyrIdx++){
-                        const layer = this.layers[lyrIdx];
-                        const prevLayer = this.layers[lyrIdx-1];
-                        for(let nrnIdx = 0; nrnIdx < layer.neurons.length; nrnIdx++){
-                            const neuron = layer.neurons[nrnIdx];
-                            for(let wghIdx = 0; wghIdx < neuron.weights.length; wghIdx++){
-                                if(!neuron.weightsError[wghIdx])
-                                    neuron.weightsError.push(0);
-                                if(wghIdx == 0)
-                                    neuron.weightsError[wghIdx] += layer.error[nrnIdx];
-                                else
-                                    neuron.weightsError[wghIdx] += layer.error[nrnIdx] * prevLayer.neurons[wghIdx-1].o;
-                            }
-                        }
-                    }
-                }
-
-                //Combine partial errors and (avg) and adjust weights
-                for(let lyrIdx = 1; lyrIdx < this.layers.length; lyrIdx++){
-                    const layer = this.layers[lyrIdx];
-                    for(let nrnIdx = 0; nrnIdx < layer.neurons.length; nrnIdx++){
-                        const neuron = layer.neurons[nrnIdx];
-                        for(let wghIdx = 0; wghIdx < neuron.weights.length; wghIdx++){
-                            neuron.weights[wghIdx] -= learningRate * (neuron.weightsError[wghIdx] / classes.length);                            
-                        }
-                        neuron.weightsError = []
-                    }
-                }
-
-                return this;
-            }
-
-            train(predictors, classes, epochs, learningRate, batchSize){
-
-                let batch = [];
-
-                let batchNum = Math.ceil(predictors.length/batchSize);
-
-                for (let i = 0; i < predictors.length; i += batchNum) {
-                    batch.push({
-                        predictors: predictors.slice(i, i + batchNum),
-                        classes: classes.slice(i, i + batchNum)
-                    });
-
-                }
-
-                for(let e = 0; e < epochs; e++)
-                    for(let i = 0; i <batch.length;  i++)
-                        this.batchTrain(batch[i].predictors, batch[i].classes, learningRate);
-                
-                return this;
-            }
-        }
-
-        $.ajax({
-            method: "GET",
-            url: "https://gist.githubusercontent.com/netj/8836201/raw/6f9306ad21398ea43cba4f7d537619d0e07d5ae3/iris.csv"
-        })
-        .done(data => {
-            data = data.replace("", "").split("\n").map(row => row.split(",").map(cell => cell.replace(/\"/g, "")));
-            data.shift();
-            data = shuffle(data).map(row => [row[0], row[1], row[2], row[3], [1 * (row[4] == "Setosa"), 1 * (row[4] == "Virginica"), 1 * (row[4] == "Versicolor")]]);
-
-            let predictors= [], classes = [];
-
-            for(let i = 0; i < data.length; i++){
-                let row = data[i];
-                predictors.push([row[0], row[1], row[2], row[3]]);
-                classes.push(row[4])
-            }
-
-            const nn = new NeuralNetwork([4, 5, 5, 3]);
-            nn.train(head(predictors, 0.7), head(classes, 0.7), 5000, 0.5, 5);
-
-            let canvas = document.getElementById("network").getContext("2d");
-            const debuggerConfig = {
-                LEFT_MARGIN: 50,
-                TOP_MARGIN: 50,
+    <h1>Iris Dataset Neural Network</h1>
+    <canvas id="network" width="1600" height="800" style="border:1px solid black"></canvas>
+    <div class="parameters">        
+        <label for="shape">Shape</label>
+        <input type="text" id="shape" value="4,5,5,3">
+        <label for="epochs">Epochs</label>
+        <input type="number" id="epochs" value="5000">
+        <label for="lrate">Learning Rate</label>
+        <input type="number" id="lrate" value="0.5">
+        <label for="batch">Batch Size</label>
+        <input type="number" id="batch" value="5">
+        <button id="train">Train NN</button>
+    </div>
+    <div class="metrics">
+        <table id="confusion-matrix">
+            
+        </table>
+    </div>
+    <script>
+        
+        const debuggerConfig = {
+                fontSize: 12,
+                font: "Arial",
+                LEFT_MARGIN: 60,
+                TOP_MARGIN: 60,
                 NEURON_RADIUS: 45,
                 NEURON_PADDING_X: 180,
-                NEURON_PADDING_Y: 70
+                NEURON_PADDING_Y: 80
             }
 
-            networkDebugger(nn, canvas, debuggerConfig);
+        const canvas = document.getElementById("network");
 
-            let testPred = tail(predictors, 0.4), testClass = tail(classes, 0.4);
-            let predicted = [];
-            for(let i = 0; i < testClass.length; i++){
-                predicted.push(nn.forward(testPred[i]).out.map(i => i < 0.5 ? 0 : 1));
-            }
-            console.log(confusionMatrix(predicted, testClass))
-        })
-        .fail(err => console.log(err));
-
-        function confusionMatrix(predicted, actual){
-            let matrix = [];
-            for(let i = 0; i < predicted[0].length; i++){
-                let row = [];
-                for(let j = 0; j < predicted[0].length; j++){
-                    row.push(0);
-                }
-                matrix.push(row);
-            }
-            for(let i = 0; i < predicted.length; i++){
-                let rowIdx = actual[i].indexOf(1);
-                let colIdx = predicted[i].indexOf(1);
-                if(rowIdx != -1 && colIdx != -1)
-                    matrix[rowIdx][colIdx] = matrix[rowIdx][colIdx]+1;
-            }
-            return matrix;
+        function getData(){
+            return new Promise((resolve, reject) => {
+                $.ajax({
+                    method: "GET",
+                    url: "https://gist.githubusercontent.com/netj/8836201/raw/6f9306ad21398ea43cba4f7d537619d0e07d5ae3/iris.csv"
+                })
+                .done(data => {
+                    data = data.replace("", "").split("\n").map(row => row.split(",").map(cell => cell.replace(/\"/g, "")));
+                    data.shift();
+                    data = shuffle(data).map(row => [row[0], row[1], row[2], row[3], [1 * (row[4] == "Setosa"), 1 * (row[4] == "Virginica"), 1 * (row[4] == "Versicolor")]]);
+                    return resolve(data);
+                })
+                .fail(err => reject(err))
+            })
         }
 
         function shuffle(data){
@@ -268,22 +94,68 @@
             }
             return data;
         }
-
-        function invert(data){
-            let ret = [];
-            for(let i = 0; i < data.length; i++){
-                ret.push(data[data.length-i-1]);
-            }
-            return ret;
-        }
         
-        function head(data, n){
-            return data.splice(0, Math.ceil(data.length * n));
-        }
+        $("#train").on("click", async ev => {
+            let shape = $("#shape").val().split(",").map(i => parseInt(i));
+            let epochs = $("#epochs").val();
+            let learningRate = $("#lrate").val();
+            let batchSize = $("#batch").val();
 
-        function tail(data, n){
-            return head(invert(data), n);
-        }
+            //Prepare Data
+            const data = await getData();
+            let trainingData = [];
+            let testingData = [];
+
+            for(let i = 0; i < data.length; i++)
+                if(i < 0.7*data.length)
+                    trainingData.push(data[i]);
+                else
+                    testingData.push(data[i]);            
+
+            let trainingfetures = trainingData.map(row => [row[0], row[1], row[2], row[3]]);
+            let trainingclasses = trainingData.map(row => row[4]);
+            
+            //Train neural network
+            const nn = new NeuralNetwork(shape);            
+            nn.train(trainingfetures, trainingclasses, epochs, learningRate, batchSize)
+
+            //Test neural network performance
+            let predicted = [];
+            let actual = [];
+            for(let i = 0; i < testingData.length; i++){
+                let features = [testingData[i][0], testingData[i][1], testingData[i][2], testingData[i][3]];
+                predicted.push(nn.forward(features).out.map(i => i > 0.5 ? 1 : 0));
+                actual.push(testingData[i][4]);
+            }
+
+            let confusionMatrix = [];
+            for(let i = 0; i < predicted[0].length; i++){
+                confusionMatrix.push([])
+                for(let j = 0; j < predicted[0].length; j++){
+                    confusionMatrix[i].push(0);
+                }
+            }
+            for(let i = 0; i < predicted.length; i++){
+                let row = actual[i].indexOf(1);
+                let col = predicted[i].indexOf(1);
+                if(row != -1 && col != -1)
+                    confusionMatrix[row][col]++;
+            }
+            
+            //Show performance and neural network visualization
+            networkDebugger(nn, canvas, debuggerConfig);
+
+            $("#confusion-matrix").html("<tr><th colspan=3>Confusion Matrix</th></tr>");
+            for(let i = 0; i < confusionMatrix.length; i++){
+                let row = "<tr>";
+                for(let j = 0; j < confusionMatrix.length; j++)
+                    row += `<td>${confusionMatrix[i][j]}</td>`;
+                row += "</tr>";
+                $("#confusion-matrix").append(row)
+            }
+        });
+
+        $("#train").trigger("click");
     </script>
 </body>
 </html>
