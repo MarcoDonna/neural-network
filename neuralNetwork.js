@@ -39,7 +39,7 @@ class OutputLayer extends Layer{
 
 class InputLayer extends Layer{
     constructor(inputs){
-        super(inputs, 1, Linear);
+        super(inputs, 1, linear);
 
         for(let i = 0; i < this.neurons.length; i++)
             for(let j = 0; j < this.neurons[i].weights.length; j++)
@@ -63,8 +63,8 @@ class NeuralNetwork{
         //Build network
         this.layers.push(new InputLayer(shape[0]));
         for(let i = 1; i < shape.length-1; i++)
-            this.layers.push(new Layer(shape[i], shape[i-1], ReLU))
-        this.layers.push(new OutputLayer(shape[shape.length-1], shape[shape.length-2], Sigmoid));                    
+            this.layers.push(new Layer(shape[i], shape[i-1], relu))
+        this.layers.push(new OutputLayer(shape[shape.length-1], shape[shape.length-2], sigmoid));                    
     }
 
     forward(inputVector){

@@ -1,25 +1,14 @@
-class ReLU{
-    static f(x){
-        return x > 0 ? x : 0;
-    }
-
-    static d(x){
-        return x > 0 ? 1 : 0;
-    }
+const relu = {
+    f: x => x > 0 ? x : 0,
+    d: x => x > 0 ? 1 : 0
 }
 
-class Sigmoid{
-    static f(x){
-        return 1 / (1 + Math.exp(-x));
-    }
-
-    static d(x){
-        return this.f(x) * (1 - this.f(x));
-    }
+const sigmoid = {
+    f: x => 1 / (1 + Math.exp(-x)),
+    d: x => sigmoid.f(x) * (1 - sigmoid.f(x))
 }
 
-class Linear{
-    static f(x){return x}
-    static d(x){return 1}
+const linear = {
+    f: x => x,
+    d: x => 1
 }
-
