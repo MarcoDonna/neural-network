@@ -174,17 +174,33 @@
                         neuron.weightsError = []
                     }
                 }
+
+                return this;
             }
 
-            train(predictors, classes){
-                let epochs = 10000;
-                let learningRate = 0.5;
+            train(predictors, classes, epochs, learningRate, batchSize){
+
+                let batch = [];
+
+                let batchNum = Math.ceil(predictors.length/batchSize);
+
+                for (let i = 0; i < predictors.length; i += batchNum) {
+                    batch.push({
+                        predictors: predictors.slice(i, i + batchNum),
+                        classes: classes.slice(i, i + batchNum)
+                    });
+
+                }
+
                 for(let e = 0; e < epochs; e++)
-                    this.batchTrain(predictors, classes, learningRate);
+                    for(let i = 0; i <batch.length;  i++)
+                        this.batchTrain(batch[i].predictors, batch[i].classes, learningRate);
+                
+                return this;
             }
         }
 
-        let nn = new NeuralNetwork([2, 2, 2]);
+        let nn = new NeuralNetwork([2, 3, 3, 2]);
 
         /*XOR Data*/
         const d = [
@@ -198,7 +214,7 @@
         const classes = d.map(record => record.Y);
 
         let canvas2 = document.getElementById("network").getContext("2d");
-        nn.train(predictors, classes);
+        nn.train(predictors, classes, 100000, 0.1, 2);
 
         const debuggerConfig = {
             LEFT_MARGIN: 50,
