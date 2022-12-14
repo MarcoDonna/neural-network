@@ -7,7 +7,6 @@
     <title>Document</title>
 </head>
 <body>
-    <canvas id="initial" width="1200" height="600" style="border:1px dashed red"></canvas>
     <canvas id="final" width="1200" height="600" style="border:1px dashed red"></canvas>
     <script>
 
@@ -89,6 +88,7 @@ const networkDebugger = (nn, canvas) => {
 
         class Neuron{
             constructor(inputSize){
+                this.weightsError = []; //Used to calc batch error
                 this.weights = [Math.random()]; //Weights[0] is bias
                 for(let i = 0; i < inputSize; i++)
                     this.weights.push(Math.random() * 2 - 1); //One weight for each input
@@ -164,9 +164,6 @@ const networkDebugger = (nn, canvas) => {
             }
 
             batchTrain(predictors, classes, learningRate){
-                /*
-                TODO: combine partial derivatives
-                */
                 for(let recordIdx = 0; recordIdx < predictors.length; recordIdx++){
                     //Feedforward
                     this.forward(predictors[recordIdx]);
@@ -179,7 +176,6 @@ const networkDebugger = (nn, canvas) => {
                         //console.log(`${layer.activation.d(neuron.h)} * (${this.out[nrnIdx]} - ${classes[recordIdx][nrnIdx]})`)
                         layer.error.push(layer.activation.d(neuron.h) * (this.out[nrnIdx] - classes[recordIdx][nrnIdx]));
                     }
-                    //console.log(layer.error);
 
                     //Hidden layer error
                     for(let lyrIdx = this.layers.length-2; lyrIdx > 0; lyrIdx--){
@@ -206,22 +202,33 @@ const networkDebugger = (nn, canvas) => {
                         const prevLayer = this.layers[lyrIdx-1];
                         for(let nrnIdx = 0; nrnIdx < layer.neurons.length; nrnIdx++){
                             const neuron = layer.neurons[nrnIdx];
-                            neuron.weightsError = [];
                             for(let wghIdx = 0; wghIdx < neuron.weights.length; wghIdx++){
+                                if(!neuron.weightsError[wghIdx])
+                                    neuron.weightsError.push(0);
                                 if(wghIdx == 0)
-                                    neuron.weightsError.push(layer.error[nrnIdx]);
+                                    neuron.weightsError[wghIdx] += layer.error[nrnIdx];
                                 else
-                                    neuron.weightsError.push(layer.error[nrnIdx] * prevLayer.neurons[wghIdx-1].o);
-                                   
-                                neuron.weights[wghIdx] -= learningRate * neuron.weightsError[wghIdx]//Remove this and use combined derivatives
+                                    neuron.weightsError[wghIdx] += layer.error[nrnIdx] * prevLayer.neurons[wghIdx-1].o;
                             }
                         }
+                    }
+                }
+
+                //Combine partial errors and (avg) and adjust weights
+                for(let lyrIdx = 1; lyrIdx < this.layers.length; lyrIdx++){
+                    const layer = this.layers[lyrIdx];
+                    for(let nrnIdx = 0; nrnIdx < layer.neurons.length; nrnIdx++){
+                        const neuron = layer.neurons[nrnIdx];
+                        for(let wghIdx = 0; wghIdx < neuron.weights.length; wghIdx++){
+                            neuron.weights[wghIdx] -= learningRate * (neuron.weightsError[wghIdx] / classes.length);                            
+                        }
+                        neuron.weightsError = []
                     }
                 }
             }
 
             train(predictors, classes){
-                let epochs = 20000;
+                let epochs = 10000;
                 let learningRate = 0.5;
                 for(let e = 0; e < epochs; e++)
                     this.batchTrain(predictors, classes, learningRate);
@@ -241,10 +248,7 @@ const networkDebugger = (nn, canvas) => {
         const predictors = d.map(record => record.X);
         const classes = d.map(record => record.Y);
 
-
-        let canvas = document.getElementById("initial").getContext("2d");
         let canvas2 = document.getElementById("final").getContext("2d");
-        networkDebugger(nn, canvas);
         nn.train(predictors, classes);
         networkDebugger(nn, canvas2);
 
