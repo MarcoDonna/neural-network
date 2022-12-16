@@ -31,6 +31,29 @@ class Layer{
     }
 }
 
+class DropoutLayer extends Layer{
+    constructor(neurons, inputs, activation, droprate){
+        super(neurons, inputs, activation);
+        this.droprate = droprate;
+        this.mask = [];
+    }
+
+    forward(inputs, training){
+        
+        this.mask = [];
+        for(let i = 0; i < this.neurons.length; i++){
+            this.neurons[i].forward(inputs, this.activation);
+            if(training){
+                this.mask.push(Math.random() < this.droprate ? 0 : 1);
+                this.neurons[i].o *= this.mask[i];
+                this.neurons[i].h *= this.mask[i];
+            }
+            
+        }
+        //console.log(training, this.mask);
+    }
+}
+
 class OutputLayer extends Layer{
     constructor(neurons, inputs, activation){
         super(neurons, inputs, activation);
@@ -64,14 +87,14 @@ class NeuralNetwork{
         this.layers.push(new InputLayer(shape[0]));
         for(let i = 1; i < shape.length-1; i++)
             this.layers.push(new Layer(shape[i], shape[i-1], relu))
-        this.layers.push(new OutputLayer(shape[shape.length-1], shape[shape.length-2], sigmoid));                    
+        this.layers.push(new OutputLayer(shape[shape.length-1], shape[shape.length-2], sigmoid));
     }
 
-    forward(inputVector){
+    forward(inputVector, training){
         let layerOutput = inputVector;
         for(let i = 0; i < this.layers.length; i++){
             //Prev layer output becomes input
-            this.layers[i].forward(layerOutput);
+            this.layers[i].forward(layerOutput, training);
             layerOutput = this.layers[i].neurons.map(neuron => neuron.o);                    
         }
         //network.out => output layer prediction
@@ -82,7 +105,7 @@ class NeuralNetwork{
     batchTrain(predictors, classes, learningRate){
         for(let recordIdx = 0; recordIdx < predictors.length; recordIdx++){
             //Feedforward
-            this.forward(predictors[recordIdx]);
+            this.forward(predictors[recordIdx], true);
 
             //Output layer error
             const layer = this.layers[this.layers.length-1]
@@ -122,9 +145,9 @@ class NeuralNetwork{
                         if(!neuron.weightsError[wghIdx])
                             neuron.weightsError.push(0);
                         if(wghIdx == 0)
-                            neuron.weightsError[wghIdx] += layer.error[nrnIdx];
+                            neuron.weightsError[wghIdx] += layer.error[nrnIdx] * (layer.mask ? layer.mask[nrnIdx] : 1);
                         else
-                            neuron.weightsError[wghIdx] += layer.error[nrnIdx] * prevLayer.neurons[wghIdx-1].o;
+                            neuron.weightsError[wghIdx] += layer.error[nrnIdx] * prevLayer.neurons[wghIdx-1].o * (layer.mask ? layer.mask[nrnIdx] : 1);
                     }
                 }
             }

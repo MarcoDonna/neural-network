@@ -13,7 +13,16 @@ const networkDebugger = (nn, canvas, parameters) => {
 
             
             context.beginPath();
-            context.strokeStyle = `rgb(0, 0, 0)`;
+
+            switch(nn.layers[i].constructor.name){
+                case "DropoutLayer":                    
+                    context.strokeStyle = `rgb(0, 255, 0)`;
+                    break;
+                default:                    
+                    context.strokeStyle = `rgb(0, 0, 0)`;
+                    break;
+            }
+
             context.arc(left, top, NEURON_RADIUS, 1/2*Math.PI, 3/2*Math.PI);
             context.arc(left, top, NEURON_RADIUS, 1/2*Math.PI, 3/2*Math.PI, true);
             context.stroke();
