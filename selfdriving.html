@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Self Driving</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.2/jquery.min.js" integrity="sha512-tWHlutFnuG0C6nQRlpvrEhE4QpkG1nn2MOUMWmUeRePl4e3Aki0VB6W1v3oLjFtd0hVOtRQ9PHpSfN6u6/QXkQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.5.0/p5.min.js" integrity="sha512-WJXVjqeINVpi5XXJ2jn0BSCfp0y80IKrYh731gLRnkAS9TKc5KNt/OfLtu+fCueqdWniouJ1ubM+VI/hbo7POQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script src="activationFunctions.js"></script>
+    <script src="neuralNetwork.js"></script>
+
+    <style>
+        body{
+            padding: 10px;
+        }
+
+        #environment{
+            width: 100%;
+            height: 70vh;
+            border: 1px solid black
+        }
+    </style>
+
+</head>
+<body>
+    <h1>Self Driving Car With Neural Network</h1>
+    <h3>Press UP_ARROW to start/stop the car, LEFT_ARROW and RIGHT_ARROW to steer</h3>
+    <div id="environment"></div>
+    <script>
+
+        const mapWalls = [
+            //Outer walls
+            [100, 10, 700, 10],      
+            [700, 10, 800, 100],
+            [800, 100, 900, 100],
+            [900, 100, 1000, 10],
+            [1000, 10, 1200, 10],
+            [1200, 10, 1300, 100],
+            [1300, 100, 1300, 500],
+            [1300, 500, 1100, 600],
+            [1100, 600, 100, 600],
+            [100, 600, 10, 500],
+            [10, 500, 10, 100],
+            [10, 100, 100, 10],
+
+
+            //Inner walls
+            [150, 100, 650, 100],
+            [650, 100, 800, 200],
+            [800, 200, 900, 200],
+            [900, 200, 1050, 100],
+            [1050, 100, 1150, 100],
+            [1150, 100, 1200, 150],
+            [1150, 100, 1200, 150],
+            [1200, 150, 1200, 430],
+            [1200, 430, 1050, 500],
+            [1050, 500, 150, 500],
+            [150, 500, 100, 450],
+            [100, 450, 100, 150],
+            [100, 150, 150, 100],
+        ]
+
+        const data = []
+
+        const euclideanDistance = (a, b) => {
+            let dist = 0;
+            for(let i = 0; i < a.length; i++)
+                dist += Math.pow(b[i] - a[i], 2);
+            return Math.sqrt(dist);
+        }
+
+        const closest =  (a, b) => {
+                let closest = b[0];
+                let minDist = euclideanDistance(a, b[0]);
+                for(let i = 1; i < b.length; i++){
+                    const dist = euclideanDistance(a, b[i])
+                    if(dist < minDist){
+                        minDist = dist;
+                        closest = b[i];
+                    }
+                }
+                return closest;
+            }
+
+        const intercept = (a, b, c, d) => {
+            const p = a;
+            const r = p.map((item, index) => b[index] - item);
+            const q = c;
+            const s = q.map((item, index) => d[index] - item);
+
+            const RxS = r[0] * s[1] - r[1] * s[0];
+            const u = ((q[0] - p[0]) * r[1] - (q[1] - p[1]) * r[0]) / RxS;
+            const t = ((q[0] - p[0]) * s[1] - (q[1] - p[1]) * s[0]) / RxS;
+
+            if(RxS != 0 && u >= 0 && u <= 1 && t >= 0 && t <= 1)
+                return [p[0] + t * r[0], p[1] + t * r[1]];
+            return Infinity;
+        }
+
+        const sketch = p => {
+            p.car = {
+                x: 120,
+                y: 50,
+                angle: p.PI*(3/2),
+                on: false
+            }
+
+            p.setup = () => {
+                p.frameRate(60);
+                p.createCanvas($("#environment").width(), $("#environment").height());                
+            }
+
+            p.draw = () => {
+                const {angle, x, y} = p.car;
+
+                p.background(255);
+
+                let frameData = {
+                    frame: p.frameCount,
+                    state: [],
+                    action: [0, 0]
+                }
+
+                //Raycast and game reset logic
+                let rayCastStartPoint = [p.car.x, p.car.y]
+                let rayCastsEndPoints = [                    
+                    [p.car.x - Math.sin(p.car.angle - 1) * 100, p.car.y + Math.cos(p.car.angle - 1) * 100],
+                    [p.car.x - Math.sin(p.car.angle - 0.5) * 100, p.car.y + Math.cos(p.car.angle - 0.5) * 100],
+                    [p.car.x - Math.sin(p.car.angle) * 100, p.car.y + Math.cos(p.car.angle) * 100],
+                    [p.car.x - Math.sin(p.car.angle + 0.5) * 100, p.car.y + Math.cos(p.car.angle + 0.5) * 100],
+                    [p.car.x - Math.sin(p.car.angle + 1) * 100, p.car.y + Math.cos(p.car.angle + 1) * 100],
+                ]; 
+
+                for(let i = 0; i < rayCastsEndPoints.length; i++){
+                    //Find intercept coordinates between every wall and raycast
+                    let points = 
+                        mapWalls
+                            .map(wall => intercept(rayCastStartPoint, rayCastsEndPoints[i], [wall[0], wall[1]], [wall[2], wall[3]]))
+                            .map(point => point == Infinity ? rayCastsEndPoints[i] : point);        
+                    
+                    //Store only the closest of all the intercepts
+                    let closestPoint = closest(rayCastStartPoint, points);
+
+                    if(euclideanDistance(rayCastStartPoint, closestPoint) > 10)
+                        frameData.state.push(euclideanDistance(rayCastStartPoint, closestPoint));                    
+                    else{
+                        //Reset when crashed
+                        p.car = {
+                            x: 120,
+                            y: 50,
+                            angle: p.PI*(3/2),
+                            on: false
+                        }  
+                    }
+
+                    p.line(...rayCastStartPoint, ...closestPoint);
+                    p.ellipse(closestPoint[0], closestPoint[1], 6, 6)
+                }
+
+                //car Controls and speed
+                p.car.x -= Math.sin(p.car.angle) * 2 * (p.on ? 1 : 0);
+                p.car.y += Math.cos(p.car.angle) * 2 * (p.on ? 1 : 0);
+
+                if(p.on){
+                    if(p.keyIsDown(37)){
+                        frameData.action[0] = 1;
+                        p.car.angle -= 2 * (p.PI/180);
+                    }                        
+                    if(p.keyIsDown(39)){
+                        frameData.action[1] = 1;
+                        p.car.angle += 2 * (p.PI/180);
+                    }                        
+                }
+
+                if(p.on == true && p.frameCount%5 == 0)
+                    data.push(frameData)
+                
+                //Render Map
+                for(let i = 0; i < mapWalls.length; i++)
+                    p.line(...mapWalls[i]);
+
+                //Render Car
+                p.translate(x, y);
+                p.rotate(angle);
+                p.fill(255, 0, 0);
+                p.rect(-10, -15, 20, 30);
+                p.rect(-1, -1, 1, 1);
+                p.translate(-x, -y);
+
+                
+            }
+
+            p.keyPressed = () => {
+                //Turn on car with up_arrow
+                if(p.keyCode == 38)
+                    p.on = !p.on  
+            }
+        }
+
+        new p5(sketch, "environment");
+    </script>
+</body>
+</html>
