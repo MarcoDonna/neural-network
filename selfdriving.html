@@ -27,7 +27,10 @@
 </head>
 <body>
     <h1>Self Driving Car With Neural Network</h1>
-    <h3>Press UP_ARROW to start/stop the car, LEFT_ARROW and RIGHT_ARROW to steer</h3>
+    <h3>Press UP_ARROW to start/stop the car, LEFT_ARROW and RIGHT_ARROW to steer, R to reverse direction</h3>
+    <h3>Press SPACE to stop the car, train the model on engage autopilot</h3>
+    <label for="raycasts">Show Raycasts</label>
+    <input type="checkbox" id="raycasts">
     <div id="environment"></div>
     <script>
 
@@ -63,7 +66,7 @@
             [100, 150, 150, 100],
         ]
 
-        const data = []
+        let autopilotTrainingData = []
 
         const euclideanDistance = (a, b) => {
             let dist = 0;
@@ -105,7 +108,11 @@
                 x: 120,
                 y: 50,
                 angle: p.PI*(3/2),
-                on: false
+                on: false,
+                autopilot: {
+                    on: false,
+                    model: new NeuralNetwork([5, 8, 8, 2])
+                }
             }
 
             p.setup = () => {
@@ -127,11 +134,11 @@
                 //Raycast and game reset logic
                 let rayCastStartPoint = [p.car.x, p.car.y]
                 let rayCastsEndPoints = [                    
-                    [p.car.x - Math.sin(p.car.angle - 1) * 100, p.car.y + Math.cos(p.car.angle - 1) * 100],
-                    [p.car.x - Math.sin(p.car.angle - 0.5) * 100, p.car.y + Math.cos(p.car.angle - 0.5) * 100],
-                    [p.car.x - Math.sin(p.car.angle) * 100, p.car.y + Math.cos(p.car.angle) * 100],
-                    [p.car.x - Math.sin(p.car.angle + 0.5) * 100, p.car.y + Math.cos(p.car.angle + 0.5) * 100],
-                    [p.car.x - Math.sin(p.car.angle + 1) * 100, p.car.y + Math.cos(p.car.angle + 1) * 100],
+                    [p.car.x - Math.sin(p.car.angle - 0.7) * 150, p.car.y + Math.cos(p.car.angle - 0.7) * 150],
+                    [p.car.x - Math.sin(p.car.angle - 0.4) * 150, p.car.y + Math.cos(p.car.angle - 0.4) * 150],
+                    [p.car.x - Math.sin(p.car.angle) * 150, p.car.y + Math.cos(p.car.angle) * 150],
+                    [p.car.x - Math.sin(p.car.angle + 0.4) * 150, p.car.y + Math.cos(p.car.angle + 0.4) * 150],
+                    [p.car.x - Math.sin(p.car.angle + 0.7) * 150, p.car.y + Math.cos(p.car.angle + 0.7) * 150],
                 ]; 
 
                 for(let i = 0; i < rayCastsEndPoints.length; i++){
@@ -145,38 +152,52 @@
                     let closestPoint = closest(rayCastStartPoint, points);
 
                     if(euclideanDistance(rayCastStartPoint, closestPoint) > 10)
-                        frameData.state.push(euclideanDistance(rayCastStartPoint, closestPoint));                    
+                        frameData.state.push(euclideanDistance(rayCastStartPoint, closestPoint)/150);                    
                     else{
                         //Reset when crashed
+                        let autopilot = {...p.car.autopilot}
                         p.car = {
                             x: 120,
                             y: 50,
                             angle: p.PI*(3/2),
-                            on: false
+                            on: true,
+                            autopilot
                         }  
                     }
 
-                    p.line(...rayCastStartPoint, ...closestPoint);
-                    p.ellipse(closestPoint[0], closestPoint[1], 6, 6)
+                    if($("#raycasts").is(":checked") == true) {
+                        p.line(...rayCastStartPoint, ...closestPoint);
+                        p.ellipse(closestPoint[0], closestPoint[1], 6, 6)
+                    }
                 }
 
                 //car Controls and speed
-                p.car.x -= Math.sin(p.car.angle) * 2 * (p.on ? 1 : 0);
-                p.car.y += Math.cos(p.car.angle) * 2 * (p.on ? 1 : 0);
+                p.car.x -= Math.sin(p.car.angle) * 2 * (p.car.on ? 1 : 0);
+                p.car.y += Math.cos(p.car.angle) * 2 * (p.car.on ? 1 : 0);
 
-                if(p.on){
-                    if(p.keyIsDown(37)){
-                        frameData.action[0] = 1;
-                        p.car.angle -= 2 * (p.PI/180);
-                    }                        
-                    if(p.keyIsDown(39)){
-                        frameData.action[1] = 1;
-                        p.car.angle += 2 * (p.PI/180);
-                    }                        
+                if(p.car.on){
+                    if(p.car.autopilot.on == true){
+                        const action = p.car.autopilot.model.forward(frameData.state).out.map(a => a > 0.6 ? 1 : 0);
+                        if(action[0] == 1)
+                            p.car.angle -= 1 * (p.PI/180);
+                        if(action[1] == 1)
+                            p.car.angle += 1 * (p.PI/180);
+                    }
+                    else{
+                        if(p.keyIsDown(37)){
+                            frameData.action[0] = 1;
+                            p.car.angle -= 1 * (p.PI/180);
+                        }                        
+                        if(p.keyIsDown(39)){
+                            frameData.action[1] = 1;
+                            p.car.angle += 1 * (p.PI/180);
+                        } 
+                    }
+                                           
                 }
 
-                if(p.on == true && p.frameCount%5 == 0)
-                    data.push(frameData)
+                if(p.car.on == true && p.car.autopilot.on == false)
+                    autopilotTrainingData.push(frameData)
                 
                 //Render Map
                 for(let i = 0; i < mapWalls.length; i++)
@@ -189,18 +210,30 @@
                 p.rect(-10, -15, 20, 30);
                 p.rect(-1, -1, 1, 1);
                 p.translate(-x, -y);
-
-                
             }
 
             p.keyPressed = () => {
                 //Turn on car with up_arrow
                 if(p.keyCode == 38)
-                    p.on = !p.on  
+                    p.car.on = !p.car.on  
+                if(p.keyCode == 32){
+                    p.car.autopilot.on = !p.car.autopilot.on;
+                    if(p.car.autopilot.on == true){
+                        const trainingfeatures = autopilotTrainingData.map(row => row.state);
+                        const trainingclasses = autopilotTrainingData.map(row => row.action);                        
+                        p.car.on = false;
+                        console.log(`training with ${autopilotTrainingData.length} records`)
+                        p.car.autopilot.model.train(trainingfeatures, trainingclasses, 5000, 0.3, 40);                        
+                        console.log(`training done`);
+                        p.car.on = true;
+                    }
+                }
+                if(p.keyCode == 82)
+                    p.car.angle += p.PI;                    
             }
         }
 
-        new p5(sketch, "environment");
+        const environment = new p5(sketch, "environment");
     </script>
 </body>
 </html>
