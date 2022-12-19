@@ -31,8 +31,15 @@
     <h3>Press SPACE to stop the car, train the model on engage autopilot</h3>
     <label for="raycasts">Show Raycasts</label>
     <input type="checkbox" id="raycasts">
+    <label for="skip-training">Skip Training (load saved model)</label>
+    <input type="checkbox" id="skip-training">
+    <button id="model-save">Save Model</button>
     <div id="environment"></div>
     <script>
+
+        $("#model-save").on("click", ev => {
+            localStorage.setItem("car-model", JSON.stringify(environment.car.autopilot.model.export()));
+        });
 
         const mapWalls = [
             //Outer walls
@@ -87,6 +94,8 @@
                 }
                 return closest;
             }
+
+        const del = () => localStorage.removeItem("car-model");
 
         const intercept = (a, b, c, d) => {
             const p = a;
@@ -219,12 +228,18 @@
                 if(p.keyCode == 32){
                     p.car.autopilot.on = !p.car.autopilot.on;
                     if(p.car.autopilot.on == true){
-                        const trainingfeatures = autopilotTrainingData.map(row => row.state);
-                        const trainingclasses = autopilotTrainingData.map(row => row.action);                        
                         p.car.on = false;
-                        console.log(`training with ${autopilotTrainingData.length} records`)
-                        p.car.autopilot.model.train(trainingfeatures, trainingclasses, 5000, 0.3, 40);                        
-                        console.log(`training done`);
+                        if(($("#skip-training").is(":checked") == false)){
+                            const trainingfeatures = autopilotTrainingData.map(row => row.state);
+                            const trainingclasses = autopilotTrainingData.map(row => row.action);                        
+                            console.log(`training with ${autopilotTrainingData.length} records`)
+                            p.car.autopilot.model.train(trainingfeatures, trainingclasses, 5000, 0.3, 40);                        
+                            console.log(`training done`);
+                            autopilotTrainingData = []; 
+                        }
+                        else{
+                            p.car.autopilot.model.import(JSON.parse(localStorage.getItem("car-model")));
+                        }
                         p.car.on = true;
                     }
                 }
