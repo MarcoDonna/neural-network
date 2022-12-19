@@ -84,10 +84,32 @@ class NeuralNetwork{
         this.layers = [];
 
         //Build network
-        this.layers.push(new InputLayer(shape[0]));
-        for(let i = 1; i < shape.length-1; i++)
-            this.layers.push(new Layer(shape[i], shape[i-1], relu))
-        this.layers.push(new OutputLayer(shape[shape.length-1], shape[shape.length-2], sigmoid));
+        if(shape){
+            this.layers.push(new InputLayer(shape[0]));
+            for(let i = 1; i < shape.length-1; i++)
+                this.layers.push(new Layer(shape[i], shape[i-1], relu))
+            this.layers.push(new OutputLayer(shape[shape.length-1], shape[shape.length-2], sigmoid));        
+        }
+    }
+
+    export(){
+        let ret = [];
+        for(let i = 0; i < this.layers.length; i++){
+            ret.push({weights: this.layers[i].neurons.map(n => n.weights)});
+        }
+        return ret;
+    }
+
+    import(model){
+        this.layers = model.map((layer, index) => {
+            if(index == 0)
+                return new InputLayer(layer.weights.length);
+            let l = new Layer(layer.weights.length, model[index-1].weights.length, index = model.length-1 ? relu : sigmoid);
+            for(let i = 0; i < l.neurons.length; i++)
+                l.neurons[i].weights = layer.weights[i];
+            return l;
+        })
+        return this;
     }
 
     forward(inputVector, training){
@@ -169,6 +191,8 @@ class NeuralNetwork{
     }
 
     train(predictors, classes, epochs, learningRate, batchSize){
+        const DEBUG = true;
+        
         let batch = [];
 
         //Calc num of batches
@@ -182,9 +206,12 @@ class NeuralNetwork{
             });
         }
 
-        for(let e = 0; e < epochs; e++)
+        for(let e = 0; e < epochs; e++){
+            if(DEBUG && e%100==0)
+                console.log(`${e} / ${epochs}`);
             for(let i = 0; i < batch.length;  i++)
                 this.batchTrain(batch[i].predictors, batch[i].classes, learningRate);
+        }
         
         return this;
     }
