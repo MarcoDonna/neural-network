@@ -215,7 +215,7 @@
                 //Render Car
                 p.translate(x, y);
                 p.rotate(angle);
-                p.fill(255, 0, 0);
+                p.fill(p.car.autopilot.on ? 255 : 0, 0, p.car.autopilot.on ? 0 : 255);
                 p.rect(-10, -15, 20, 30);
                 p.rect(-1, -1, 1, 1);
                 p.translate(-x, -y);
