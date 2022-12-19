@@ -164,7 +164,8 @@
                         frameData.state.push(euclideanDistance(rayCastStartPoint, closestPoint)/150);                    
                     else{
                         //Reset when crashed
-                        let autopilot = {...p.car.autopilot}
+                        let autopilot = {...p.car.autopilot};
+                        autopilot.model.randomize(0.05);
                         p.car = {
                             x: 120,
                             y: 50,

@@ -124,6 +124,16 @@ class NeuralNetwork{
         return this;
     }
 
+    randomize(n){
+        for(let i = 1; i < this.layers.length; i++)
+            for(let j = 0; j < this.layers[i].neurons.length; j++)
+                for(let k = 0; k < this.layers[i].neurons[j].weights.length; k++){
+                    let weight = this.layers[i].neurons[j].weights[k];
+                    let delta = (weight * n * 2 - n) * Math.random();
+                    this.layers[i].neurons[j].weights[k] += delta;
+                }
+    }
+
     batchTrain(predictors, classes, learningRate){
         for(let recordIdx = 0; recordIdx < predictors.length; recordIdx++){
             //Feedforward
