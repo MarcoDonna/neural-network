@@ -37,11 +37,121 @@
     <div id="environment"></div>
     <script>
 
+        class Environment{
+            constructor(map, obstacles, cars){
+                this.map = map || [];
+                this.obstacles = obstacles || [];
+                for(let i = 0; i < this.obstacles.length; i++){
+                    const o = obstacles[i];
+                    map.push([o[0], o[1], o[0] + o[2], o[1]]);
+                    map.push([o[0], o[1], o[0], o[1] + o[3]]);
+                    map.push([o[0] + o[2], o[1] + o[3], o[0] + o[2], o[1]]);
+                    map.push([o[0] + o[2], o[1] + o[3], o[0], o[1] + o[3]]);
+                }
+            }
+
+            render(p){
+                //Render Map
+                for(let i = 0; i < mapWalls.length; i++)
+                    p.line(...mapWalls[i]);
+            }
+        }
+
+        class Car{
+            constructor(par){
+                this.x = par.x || 0;
+                this.y = par.y || 0;
+                this.on = true;
+                this.width = par.width || 20;
+                this.height = par.height || 30;
+                this.angle = par.angle || 0;
+                this.color = par.color || [255, 0, 0];
+                this.immortal = false;
+                this.alive = true;
+                this.turn = 0.02;
+                this.speed = 1;
+
+                this.autopilot = {on: false, model: new NeuralNetwork([3, 4, 4, 2])}
+
+                this.raycast = [];
+                this.perimeter = [];
+            }
+
+            setPerimeter(p){
+                this.perimeter = [[this.x - this.height/2, this.y - this.width/2, this.x + this.height/2, this.y - this.width/2],
+                                [this.x - this.height/2, this.y - this.width/2, this.x - this.height/2, this.y + this.width/2],
+                                [this.x + this.height/2, this.y + this.width/2, this.x - this.height/2, this.y + this.width/2],
+                                [this.x + this.height/2, this.y + this.width/2, this.x + this.height/2, this.y - this.width/2]]
+                return this;
+            }
+
+            move(m){
+                m = m || 1;
+                this.x -= (this.on ? 1 : 0) * Math.sin(this.angle) * this.speed * m;
+                this.y += (this.on ? 1 : 0) * Math.cos(this.angle) * this.speed * m;
+                return this;
+            }
+
+            control(l, r){
+                this.angle += (this.on == true ? 1 : 0) * l * this.turn;
+                this.angle -= (this.on == true ? 1 : 0) * r * this.turn;
+                return this;
+            }
+
+            distance(env, cars){
+                if(!cars)
+                    cars = [];
+                const rays = [                    
+                    [this.x - Math.sin(this.angle-0.3) * 150, this.y + Math.cos(this.angle-0.3) * 150],
+                    [this.x - Math.sin(this.angle) * 150, this.y + Math.cos(this.angle) * 150],                    
+                    [this.x - Math.sin(this.angle+0.3) * 150, this.y + Math.cos(this.angle+0.3) * 150]
+                ]
+                let rayData = [];
+                for(let i = 0; i < rays.length; i++){
+                    let rayMapInterceptPoints = [];
+                    for(let j = 0; j < env.map.length; j++)                   
+                        rayMapInterceptPoints.push(intercept([this.x, this.y], rays[i], [env.map[j][0], env.map[j][1]], [env.map[j][2], env.map[j][3]]))
+                    
+                    for(let j = 0; j < cars.length; j++)
+                        for(let k = 0; k < cars[j].perimeter.length; k++)
+                            rayMapInterceptPoints.push(intercept([this.x, this.y], rays[i], [cars[j].perimeter[k][0], cars[j].perimeter[k][1]], [cars[j].perimeter[k][2], cars[j].perimeter[k][3]]))
+                    rayData.push(closest([this.x, this.y], rayMapInterceptPoints.map(point => point === Infinity ? rays[i] : point)));
+                }
+                this.raycast = rayData;
+                return this;
+            }
+
+            aliveStatus(){
+                for(let i = 0; i < this.raycast.length; i++)
+                    if(euclideanDistance([this.x, this.y], this.raycast[i]) < Math.max(this.height/2, this.width/2) && this.immortal == false){
+                        this.alive = false;
+                        if(this.onDeath)
+                                this.onDeath(this);
+                    }
+                return this;
+            }
+
+            render(p){
+                //Render Car
+                p.translate(this.x, this.y);
+                p.rotate(this.angle);
+                p.rect(-this.width / 2, -this.height / 2, this.width, this.height);
+                p.rect(-1, -1, 1, 1);                
+                p.rotate(-this.angle);
+                p.translate(-this.x, -this.y);                
+                for(let i = 0; i < this.raycast.length; i++){
+                    p.line(this.x, this.y, ...this.raycast[i]);
+                    p.ellipse(this.raycast[i][0], this.raycast[i][1], 4, 4);                    
+                }
+                return this;
+            }
+        }
+
         $("#model-save").on("click", ev => {
             localStorage.setItem("car-model", JSON.stringify(environment.car.autopilot.model.export()));
         });
 
-        const mapWalls = [
+        let mapWalls = [
             //Outer walls
             [100, 10, 700, 10],      
             [700, 10, 800, 100],
@@ -70,10 +180,12 @@
             [1050, 500, 150, 500],
             [150, 500, 100, 450],
             [100, 450, 100, 150],
-            [100, 150, 150, 100],
-        ]
+            [100, 150, 150, 100]
+        ];
+            
+        let trainingdataset = []
 
-        let autopilotTrainingData = []
+        const del = () => localStorage.removeItem("car-model");
 
         const euclideanDistance = (a, b) => {
             let dist = 0;
@@ -95,8 +207,6 @@
                 return closest;
             }
 
-        const del = () => localStorage.removeItem("car-model");
-
         const intercept = (a, b, c, d) => {
             const p = a;
             const r = p.map((item, index) => b[index] - item);
@@ -113,116 +223,42 @@
         }
 
         const sketch = p => {
-            p.car = {
-                x: 120,
-                y: 50,
-                angle: p.PI*(3/2),
-                on: false,
-                autopilot: {
-                    on: false,
-                    model: new NeuralNetwork([5, 8, 8, 2])
-                }
-            }
+
+            p.cars = [];
+            p.map = new Environment(mapWalls);
 
             p.setup = () => {
                 p.frameRate(60);
-                p.createCanvas($("#environment").width(), $("#environment").height());                
+                p.createCanvas($("#environment").width(), $("#environment").height());  
+                p.cars.push(new Car({x: 100, y: 50, angle: -Math.PI/2}));
+                p.cars[0].onDeath = c => {c.x = 100, c.y = 50, c.angle = -Math.PI/2, c.alive = true};  
             }
 
-            p.draw = () => {
-                const {angle, x, y} = p.car;
-
+            p.draw = () => {                
                 p.background(255);
-
-                let frameData = {
-                    frame: p.frameCount,
-                    state: [],
-                    action: [0, 0]
-                }
-
-                //Raycast and game reset logic
-                let rayCastStartPoint = [p.car.x, p.car.y]
-                let rayCastsEndPoints = [                    
-                    [p.car.x - Math.sin(p.car.angle - 0.7) * 150, p.car.y + Math.cos(p.car.angle - 0.7) * 150],
-                    [p.car.x - Math.sin(p.car.angle - 0.4) * 150, p.car.y + Math.cos(p.car.angle - 0.4) * 150],
-                    [p.car.x - Math.sin(p.car.angle) * 150, p.car.y + Math.cos(p.car.angle) * 150],
-                    [p.car.x - Math.sin(p.car.angle + 0.4) * 150, p.car.y + Math.cos(p.car.angle + 0.4) * 150],
-                    [p.car.x - Math.sin(p.car.angle + 0.7) * 150, p.car.y + Math.cos(p.car.angle + 0.7) * 150],
-                ]; 
-
-                for(let i = 0; i < rayCastsEndPoints.length; i++){
-                    //Find intercept coordinates between every wall and raycast
-                    let points = 
-                        mapWalls
-                            .map(wall => intercept(rayCastStartPoint, rayCastsEndPoints[i], [wall[0], wall[1]], [wall[2], wall[3]]))
-                            .map(point => point == Infinity ? rayCastsEndPoints[i] : point);        
-                    
-                    //Store only the closest of all the intercepts
-                    let closestPoint = closest(rayCastStartPoint, points);
-
-                    if(euclideanDistance(rayCastStartPoint, closestPoint) > 10)
-                        frameData.state.push(euclideanDistance(rayCastStartPoint, closestPoint)/150);                    
-                    else{
-                        //Reset when crashed
-                        let autopilot = {...p.car.autopilot};
-                        autopilot.model.randomize(0.05);
-                        p.car = {
-                            x: 120,
-                            y: 50,
-                            angle: p.PI*(3/2),
-                            on: true,
-                            autopilot
-                        }  
-                    }
-
-                    if($("#raycasts").is(":checked") == true) {
-                        p.line(...rayCastStartPoint, ...closestPoint);
-                        p.ellipse(closestPoint[0], closestPoint[1], 6, 6)
-                    }
-                }
-
-                //car Controls and speed
-                p.car.x -= Math.sin(p.car.angle) * 2 * (p.car.on ? 1 : 0);
-                p.car.y += Math.cos(p.car.angle) * 2 * (p.car.on ? 1 : 0);
-
-                if(p.car.on){
-                    if(p.car.autopilot.on == true){
-                        const action = p.car.autopilot.model.forward(frameData.state).out.map(a => a > 0.6 ? 1 : 0);
-                        if(action[0] == 1)
-                            p.car.angle -= 1 * (p.PI/180);
-                        if(action[1] == 1)
-                            p.car.angle += 1 * (p.PI/180);
+                p.map.render(p);
+                p.cars.forEach((car, index) => {
+                    const otherCars = p.cars.filter((car, _index) => index != _index)
+                    car.move(1);
+                    car.setPerimeter();
+                    car.aliveStatus();
+                    car.distance(p.map, otherCars);
+                    if(car.autopilot.on){
+                        const action = car.autopilot.model.forward(car.raycast).out.map(a => a > 0.5 ? 1 : 0);
+                        car.control(action[0], action[1]);
                     }
                     else{
-                        if(p.keyIsDown(37)){
-                            frameData.action[0] = 1;
-                            p.car.angle -= 1 * (p.PI/180);
-                        }                        
-                        if(p.keyIsDown(39)){
-                            frameData.action[1] = 1;
-                            p.car.angle += 1 * (p.PI/180);
-                        } 
+                        if(index == 0){
+                            car.control(p.keyIsDown(39), p.keyIsDown(37));
+                            if(car.alive == true)
+                                trainingdataset.push({state: car.raydata, action: [p.keyIsDown(39), p.keyIsDown(37)]});
+                        }   
                     }
-                                           
-                }
-
-                if(p.car.on == true && p.car.autopilot.on == false)
-                    autopilotTrainingData.push(frameData)
-                
-                //Render Map
-                for(let i = 0; i < mapWalls.length; i++)
-                    p.line(...mapWalls[i]);
-
-                //Render Car
-                p.translate(x, y);
-                p.rotate(angle);
-                p.fill(p.car.autopilot.on ? 255 : 0, 0, p.car.autopilot.on ? 0 : 255);
-                p.rect(-10, -15, 20, 30);
-                p.rect(-1, -1, 1, 1);
-                p.translate(-x, -y);
+                    car.render(p);
+                });
             }
 
-            p.keyPressed = () => {
+            /*p.keyPressed = () => {
                 //Turn on car with up_arrow
                 if(p.keyCode == 38)
                     p.car.on = !p.car.on  
@@ -246,7 +282,7 @@
                 }
                 if(p.keyCode == 82)
                     p.car.angle += p.PI;                    
-            }
+            }*/
         }
 
         const environment = new p5(sketch, "environment");
