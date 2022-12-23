@@ -9,9 +9,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.2/jquery.min.js" integrity="sha512-tWHlutFnuG0C6nQRlpvrEhE4QpkG1nn2MOUMWmUeRePl4e3Aki0VB6W1v3oLjFtd0hVOtRQ9PHpSfN6u6/QXkQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.5.0/p5.min.js" integrity="sha512-WJXVjqeINVpi5XXJ2jn0BSCfp0y80IKrYh731gLRnkAS9TKc5KNt/OfLtu+fCueqdWniouJ1ubM+VI/hbo7POQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-    <script src="activationFunctions.js"></script>
-    <script src="neuralNetwork.js"></script>
-
+    <script src="src/utils.js"></script>
+    <script src="src/activationFunctions.js"></script>
+    <script src="src/neuralNetwork.js"></script>
+    <script src="src/map.js"></script>
+    <script src="src/car.js"></script>
     <style>
         body{
             padding: 10px;
@@ -27,21 +29,18 @@
 </head>
 <body>
     <h1>Self Driving Car With Neural Network</h1>
-    <h3>Press UP_ARROW to start/stop the car, LEFT_ARROW and RIGHT_ARROW to steer, R to reverse direction</h3>
+    <h3>Press UP_ARROW to start/stop the car, LEFT_ARROW and RIGHT_ARROW to steer</h3>
     <h3>Press SPACE to stop the car, train the model on engage autopilot</h3>
-    <label for="raycasts">Show Raycasts</label>
-    <input type="checkbox" id="raycasts">
-    <label for="skip-training">Skip Training (load saved model)</label>
+    <label for="raycast">Show Raycasts</label>
+    <input type="checkbox" id="raycast">
+    <label for="skip-training">Use Saved Model</label>
     <input type="checkbox" id="skip-training">
-    <button id="model-save">Save Model</button>
+    <button id="add-car">Add Car</button>
     <div id="environment"></div>
     <script>
+        let trainingdataset = []
 
-        $("#model-save").on("click", ev => {
-            localStorage.setItem("car-model", JSON.stringify(environment.car.autopilot.model.export()));
-        });
-
-        const mapWalls = [
+        let mapWalls = [
             //Outer walls
             [100, 10, 700, 10],      
             [700, 10, 800, 100],
@@ -70,182 +69,86 @@
             [1050, 500, 150, 500],
             [150, 500, 100, 450],
             [100, 450, 100, 150],
-            [100, 150, 150, 100],
-        ]
+            [100, 150, 150, 100]
+        ];
 
-        let autopilotTrainingData = []
-
-        const euclideanDistance = (a, b) => {
-            let dist = 0;
-            for(let i = 0; i < a.length; i++)
-                dist += Math.pow(b[i] - a[i], 2);
-            return Math.sqrt(dist);
-        }
-
-        const closest =  (a, b) => {
-                let closest = b[0];
-                let minDist = euclideanDistance(a, b[0]);
-                for(let i = 1; i < b.length; i++){
-                    const dist = euclideanDistance(a, b[i])
-                    if(dist < minDist){
-                        minDist = dist;
-                        closest = b[i];
-                    }
-                }
-                return closest;
-            }
-
-        const del = () => localStorage.removeItem("car-model");
-
-        const intercept = (a, b, c, d) => {
-            const p = a;
-            const r = p.map((item, index) => b[index] - item);
-            const q = c;
-            const s = q.map((item, index) => d[index] - item);
-
-            const RxS = r[0] * s[1] - r[1] * s[0];
-            const u = ((q[0] - p[0]) * r[1] - (q[1] - p[1]) * r[0]) / RxS;
-            const t = ((q[0] - p[0]) * s[1] - (q[1] - p[1]) * s[0]) / RxS;
-
-            if(RxS != 0 && u >= 0 && u <= 1 && t >= 0 && t <= 1)
-                return [p[0] + t * r[0], p[1] + t * r[1]];
-            return Infinity;
-        }
+        $("#add-car").on("click", ev => {
+            let car = new Car({
+                x: 600,
+                y: 550,
+                angle: Math.PI/2,           
+            });
+            car.speed = 1.4+0.2*Math.random(),
+            car.turn = 0.02+0.01*Math.random()
+            car.onDeath = c => {c.x = 600, c.y = 550, c.angle = Math.PI/2, c.alive = true, car.autopilot.model.randomize(0.01)}
+            car.autopilot.on = true;
+            car.autopilot.model.import(JSON.parse(localStorage.getItem("car-model")))//.randomize(0.01);
+            environment.cars.push(car);
+        })
 
         const sketch = p => {
-            p.car = {
-                x: 120,
-                y: 50,
-                angle: p.PI*(3/2),
-                on: false,
-                autopilot: {
-                    on: false,
-                    model: new NeuralNetwork([5, 8, 8, 2])
-                }
-            }
+
+            p.cars = [];
+            p.map = new Environment(mapWalls);
 
             p.setup = () => {
                 p.frameRate(60);
-                p.createCanvas($("#environment").width(), $("#environment").height());                
+                p.createCanvas($("#environment").width(), $("#environment").height());  
+                p.cars.push(new Car({x: 200, y: 50, angle: -Math.PI/2}));
+                p.cars.forEach((car, index) => {
+                    car.speed = 2;
+                    car.onDeath = c => {c.x = 100, c.y = 50, c.angle = -Math.PI/2, c.alive = true};
+                }); 
             }
 
-            p.draw = () => {
-                const {angle, x, y} = p.car;
-
+            p.draw = () => {                
                 p.background(255);
-
-                let frameData = {
-                    frame: p.frameCount,
-                    state: [],
-                    action: [0, 0]
-                }
-
-                //Raycast and game reset logic
-                let rayCastStartPoint = [p.car.x, p.car.y]
-                let rayCastsEndPoints = [                    
-                    [p.car.x - Math.sin(p.car.angle - 0.7) * 150, p.car.y + Math.cos(p.car.angle - 0.7) * 150],
-                    [p.car.x - Math.sin(p.car.angle - 0.4) * 150, p.car.y + Math.cos(p.car.angle - 0.4) * 150],
-                    [p.car.x - Math.sin(p.car.angle) * 150, p.car.y + Math.cos(p.car.angle) * 150],
-                    [p.car.x - Math.sin(p.car.angle + 0.4) * 150, p.car.y + Math.cos(p.car.angle + 0.4) * 150],
-                    [p.car.x - Math.sin(p.car.angle + 0.7) * 150, p.car.y + Math.cos(p.car.angle + 0.7) * 150],
-                ]; 
-
-                for(let i = 0; i < rayCastsEndPoints.length; i++){
-                    //Find intercept coordinates between every wall and raycast
-                    let points = 
-                        mapWalls
-                            .map(wall => intercept(rayCastStartPoint, rayCastsEndPoints[i], [wall[0], wall[1]], [wall[2], wall[3]]))
-                            .map(point => point == Infinity ? rayCastsEndPoints[i] : point);        
-                    
-                    //Store only the closest of all the intercepts
-                    let closestPoint = closest(rayCastStartPoint, points);
-
-                    if(euclideanDistance(rayCastStartPoint, closestPoint) > 10)
-                        frameData.state.push(euclideanDistance(rayCastStartPoint, closestPoint)/150);                    
-                    else{
-                        //Reset when crashed
-                        let autopilot = {...p.car.autopilot};
-                        autopilot.model.randomize(0.05);
-                        p.car = {
-                            x: 120,
-                            y: 50,
-                            angle: p.PI*(3/2),
-                            on: true,
-                            autopilot
-                        }  
-                    }
-
-                    if($("#raycasts").is(":checked") == true) {
-                        p.line(...rayCastStartPoint, ...closestPoint);
-                        p.ellipse(closestPoint[0], closestPoint[1], 6, 6)
-                    }
-                }
-
-                //car Controls and speed
-                p.car.x -= Math.sin(p.car.angle) * 2 * (p.car.on ? 1 : 0);
-                p.car.y += Math.cos(p.car.angle) * 2 * (p.car.on ? 1 : 0);
-
-                if(p.car.on){
-                    if(p.car.autopilot.on == true){
-                        const action = p.car.autopilot.model.forward(frameData.state).out.map(a => a > 0.6 ? 1 : 0);
-                        if(action[0] == 1)
-                            p.car.angle -= 1 * (p.PI/180);
-                        if(action[1] == 1)
-                            p.car.angle += 1 * (p.PI/180);
+                p.map.render(p);
+                p.cars.forEach((car, index) => {
+                    const otherCars = p.cars.filter((car, _index) => index != _index)
+                    car.move(1);
+                    car.setPerimeter();
+                    car.aliveStatus();
+                    car.distance(p.map, otherCars);
+                    if(car.autopilot.on){
+                        const action = car.autopilot.model.forward(car.raycast.map(point => euclideanDistance([car.x, car.y], point)/150)).out.map(a => a > 0.5 ? 1 : 0);
+                        car.control(action[0], action[1]);
                     }
                     else{
-                        if(p.keyIsDown(37)){
-                            frameData.action[0] = 1;
-                            p.car.angle -= 1 * (p.PI/180);
-                        }                        
-                        if(p.keyIsDown(39)){
-                            frameData.action[1] = 1;
-                            p.car.angle += 1 * (p.PI/180);
-                        } 
+                        if(index == 0){
+                            car.control(p.keyIsDown(39), p.keyIsDown(37));
+                            if(car.on && !car.autopilot.on && car.alive == true)
+                                trainingdataset.push({state: car.raycast.map(point => euclideanDistance([car.x, car.y], point)/150), action: [p.keyIsDown(39) ? 1 : 0, p.keyIsDown(37) ? 1 : 0]});
+                        }   
                     }
-                                           
-                }
-
-                if(p.car.on == true && p.car.autopilot.on == false)
-                    autopilotTrainingData.push(frameData)
-                
-                //Render Map
-                for(let i = 0; i < mapWalls.length; i++)
-                    p.line(...mapWalls[i]);
-
-                //Render Car
-                p.translate(x, y);
-                p.rotate(angle);
-                p.fill(p.car.autopilot.on ? 255 : 0, 0, p.car.autopilot.on ? 0 : 255);
-                p.rect(-10, -15, 20, 30);
-                p.rect(-1, -1, 1, 1);
-                p.translate(-x, -y);
+                    car.render(p, $("#raycast").is(":checked"));
+                });
             }
 
             p.keyPressed = () => {
-                //Turn on car with up_arrow
-                if(p.keyCode == 38)
-                    p.car.on = !p.car.on  
-                if(p.keyCode == 32){
-                    p.car.autopilot.on = !p.car.autopilot.on;
-                    if(p.car.autopilot.on == true){
-                        p.car.on = false;
-                        if(($("#skip-training").is(":checked") == false)){
-                            const trainingfeatures = autopilotTrainingData.map(row => row.state);
-                            const trainingclasses = autopilotTrainingData.map(row => row.action);                        
-                            console.log(`training with ${autopilotTrainingData.length} records`)
-                            p.car.autopilot.model.train(trainingfeatures, trainingclasses, 5000, 0.3, 40);                        
-                            console.log(`training done`);
-                            autopilotTrainingData = []; 
-                        }
-                        else{
-                            p.car.autopilot.model.import(JSON.parse(localStorage.getItem("car-model")));
-                        }
-                        p.car.on = true;
-                    }
+                switch(p.keyCode){
+                    case 32:
+                        p.cars[0].autopilot.on = !p.cars[0].autopilot.on;
+                        p.cars[0].on = false;
+                        if(p.cars[0].autopilot.on == true){
+                            const features = trainingdataset.map(row => row.state);
+                            const classes = trainingdataset.map(row => row.action);
+                            if($("#skip-training").is(":checked"))
+                                p.cars[0].autopilot.model.import(JSON.parse(localStorage.getItem("car-model")))
+                            else
+                                p.cars[0].autopilot.model.train(features, classes, 5000, 0.1, 40);
+                            localStorage.setItem("car-model", JSON.stringify(p.cars[0].autopilot.model.export()));
+                            trainingdataset = [];
+                        }                    
+                        p.cars[0].on = true;
+                        break;
+                    case 38:
+                        p.cars.forEach(car => car.on = !car.on);
+                        break;
+                    case 82:
+                        p.cars.forEach(car => car.angle += Math.PI)
+                        break;
                 }
-                if(p.keyCode == 82)
-                    p.car.angle += p.PI;                    
             }
         }
 
