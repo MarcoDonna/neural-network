@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QTable</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.2/jquery.min.js" integrity="sha512-tWHlutFnuG0C6nQRlpvrEhE4QpkG1nn2MOUMWmUeRePl4e3Aki0VB6W1v3oLjFtd0hVOtRQ9PHpSfN6u6/QXkQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.5.0/p5.min.js" integrity="sha512-WJXVjqeINVpi5XXJ2jn0BSCfp0y80IKrYh731gLRnkAS9TKc5KNt/OfLtu+fCueqdWniouJ1ubM+VI/hbo7POQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>
+        .env-wrp{
+            width: 100%;
+            height: 600px;
+            border: 1px solid black;
+        }
+
+        #log tr{
+            padding: 4px
+        }
+
+        #log tr td{
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <h1>QTable</h1>
+    <div class="env-wrp">
+        <canvas id="env" width="1000px" height="600px"></canvas>
+    </div>
+    <table id="log"></table>
+    <script>
+        const renderTiles = (tiles, agent) => {
+            var c = document.getElementById("env");
+            var ctx = c.getContext("2d");
+            for(let i = 0; i < tiles.length; i++)
+                for(let j = 0; j < tiles[i].length; j++){
+                    ctx.fillStyle = "red";
+                    switch(tiles[i][j].type){
+                        case "start":
+                            ctx.fillStyle = "white";
+                            break;
+                        case "end":
+                            ctx.fillStyle = "green";
+                            break;
+                        case "obstacle":
+                            ctx.fillStyle = "black";
+                            break;
+                        case "reward":
+                            ctx.fillStyle = "blue";
+                            break;
+                        default:
+                            ctx.fillStyle = "white";
+                    }
+                    ctx.fillRect(j * 60, i * 60, 60, 60);
+                    ctx.rect(j * 60, i * 60, 60, 60);
+                    ctx.stroke();
+                }
+            
+            if(agent){
+                let maxIt = 20;
+
+                agent.state("0,0")
+                while(--maxIt > 0){                    
+                    console.log(agent.state())
+                    const nextState = agent.nextState(agent.state(), agent.maxAction(agent.state()).a);                    
+
+                    if(agent.final(nextState) == false){
+                        agent.exploit()
+                        let state = agent.state().split(",").map(i => parseInt(i));
+                        ctx.beginPath();
+                        ctx.arc(state[1] * 60 + 30, state[0] * 60 + 30, 15, 0, 2 * Math.PI)
+                        ctx.stroke();
+                    }
+                    else{
+                        ns = nextState.split(",").map(i => parseInt(i));
+                        ctx.beginPath();
+                        ctx.strokeStyle = "white";
+                        ctx.arc(ns[1] * 60 + 30, ns[0] * 60 + 30, 15, 0, 2 * Math.PI)
+                        ctx.stroke();
+                        return;
+                    }
+
+                }
+            }
+        }
+
+        const renderLog = qt => {
+            $("#log").html("");
+            let row ="<th>"
+            for(let i = 0; i < qt.actions.length; i++)
+                row += `<td>${qt.actions[i]}</td>`
+            row+="</th>";
+            $("#log").append(row);
+
+            for(let i = 0; i < qt.states.length; i++){
+                row = "<tr><td>"+qt.states[i]+"</td>"
+                for(let j = 0; j < qt.actions.length; j++)
+                    row += `<td>${qt.table[i][j]}</td>`
+                row += "</tr>";
+                $("#log").append(row);
+            }
+        }
+
+        const genTiles = (rows, cols) => {
+            let tiles = [];
+            for(let i = 0; i < rows; i++){
+                tiles.push([]);
+                for(let j = 0; j < cols; j++){
+                    let rand = Math.random();
+                    let type = rand < 0.8 ? "default" : "obstacle";
+                    
+                    tiles[i].push({type})
+                }
+            }
+            tiles[0][0] = {type: "start"};
+            tiles[rows-1][cols-1] = {type: "end"};
+            return tiles;
+        }
+
+
+        class Agent{
+            constructor(p){
+                this.qt = {};
+                this.qt.states = p.states;
+                this.qt.actions = p.actions;
+
+                this.epochs = p.epochs;
+
+                this.qt.learningRate = p.qt.learningRate;
+                this.qt.discountFactor = p.qt.discountFactor;
+                this.qt.epsilon = p.qt.epsilon;
+
+                this.qt.table = [];
+
+                this.data = p.data;
+
+                for(let i = 0; i < this.qt.states.length; i++){
+                    this.qt.table.push([]);
+                    for(let j = 0; j < this.qt.actions.length; j++)
+                        this.qt.table[i].push(p.qt?.default || 0);
+                }
+            }
+
+            train(epochs){
+                //Update q-table with epsilon greedy tradeoff
+                epochs = epochs || this.epochs;
+                for(let i = 0; i < epochs; i++){
+                    if(Math.random() < this.qt.epsilon)
+                        this.explore(i);
+                    else
+                        this.exploit();
+                }         
+                return this;       
+            }
+
+            exploit(state){
+                //Set state as best possible state, when next state is not final
+                state = state || this.state();
+                const nextState = this.nextState(state, this.maxAction(state).a);
+                if(this.final(nextState) == false)
+                    return this.state(nextState);
+                return this.state();
+            }
+
+            maxAction(state){
+                //Find best action value, index and action at given state
+                state = state || this.state();
+                const stateIndex = this.qt.states.indexOf(state);
+
+                let maxActionValue = this.qt.table[stateIndex][0],
+                    maxActionIndex = 0;
+
+                for(let i = 0; i < this.qt.table[stateIndex].length; i++)
+                    if(this.qt.table[stateIndex][i] > maxActionValue){
+                        maxActionValue = this.qt.table[stateIndex][i];
+                        maxActionIndex = i;
+                    }
+
+                return {q: maxActionValue, i: maxActionIndex, a: this.qt.actions[maxActionIndex]};
+            }
+
+            explore(epoch){
+                //Update QValue with formula
+                const currentState = this.state();
+                const currentAction = this.randAction();
+                const nextState = this.nextState(currentState, currentAction);
+
+                const currentStateIdx = this.qt.states.indexOf(currentState);
+                const currentActionIdx = this.qt.actions.indexOf(currentAction);
+
+                if(this.final(nextState, epoch) == true){  //If the future state is final (Obstacle, Out of borders or finish) set the qv of current state, action to the max reward at the nextState
+                    this.qt.table[currentStateIdx][currentActionIdx] = this.reward(nextState);
+                }else{
+                    if(currentStateIdx != -1 && currentActionIdx != -1){
+                        const cQ = (1 - this.qt.learningRate) * this.qt.table[currentStateIdx][currentActionIdx];
+                        const r = this.qt.learningRate * this.reward(this.state()) //Should reward depend on action?
+                        const maxQ = this.qt.learningRate * this.qt.discountFactor *this.maxAction(nextState).q;
+                        this.qt.table[currentStateIdx][currentActionIdx] = cQ + r + maxQ;
+                        this.state(nextState);
+                    }
+                }
+
+                return this;
+            }
+
+            randAction(){
+                //Choose a random action
+                return this.qt.actions[Math.floor(this.qt.actions.length * Math.random())];
+            }
+
+        }
+
+        const rows = 6, cols = 6;
+        const tiles = genTiles(rows, cols);
+
+        let actions = ["north", "east", "south", "west"];
+        let states = [];
+        for(let i = 0; i < rows; i++)
+            for(let j = 0; j < cols; j++)
+                states.push([i, j].toString())
+
+        const agentConfig = {
+            qt: {
+                learningRate: 0.1,
+                discountFactor: 0.2,
+                epsilon: 0.9,
+            },
+            epochs: 200000,
+            actions,
+            states,
+            data: {
+                map: tiles,
+                agentX: 0,
+                agentY: 0
+            }            
+        }
+
+        const agent = new Agent(agentConfig);
+
+        agent.state = ns => {
+            if(ns){
+                ns = ns.split(",").map(i => parseInt(i));
+                agent.data.agentX = ns[0];
+                agent.data.agentY = ns[1];
+            }
+            return [agent.data.agentX, agent.data.agentY].toString();
+        }
+
+        agent.nextState = (s, a) => {
+            //row, col
+            s = s.split(",").map(i => parseInt(i));
+            switch(a){
+                case "north":
+                    s[0]--;
+                    break;
+                case "east":
+                    s[1]++
+                    break;
+                case "south":
+                    s[0]++
+                    break;
+                case "west":
+                    s[1]--;
+                    break;
+            }
+            return s.toString();
+        }
+
+        agent.final = (ns, e) => {
+            if(e%1000 == 0){
+                //Max Episode Length Check
+                agent.data.agentX = 0;
+                agent.data.agentY = 0;
+                return true;
+            }
+
+            ns = ns.split(",").map(i => parseInt(i));            
+
+            if(ns[0] < 0 || ns[0] >= agent.data.map.length || ns[1] < 0 || ns[1] >= agent.data.map[0].length){
+                //Out of bounds
+                agent.data.agentX = 0;
+                agent.data.agentY = 0;                
+                return true;
+            }    
+            
+            let tileType = agent.data.map[ns[0]][ns[1]].type;
+            if(tileType == "obstacle" || tileType == "end"){
+                //over obstacle or finished
+                agent.data.agentX = 0;
+                agent.data.agentY = 0;
+                return true;
+            }
+
+            return false;
+        }
+
+        agent.reward = s => {
+            s = s.split(",").map(i => i.toString());
+
+            if(s[0] < 0 || s[0] >= agent.data.map.length || s[1] < 0 || s[1] >= agent.data.map[0].length){
+                //Out of bounds                
+                return -100;
+            }
+
+            switch(agent.data.map[s[0]][s[1]].type){
+                case "end":
+                    return 100
+                    break;
+                case "obstacle":
+                    return -100
+                    break;
+                default:
+                    return 0;
+            }
+        }
+
+        agent.train();
+
+        renderTiles(tiles, agent)
+        renderLog(agent.qt)
+
+    </script>
+</body>
+</html>
