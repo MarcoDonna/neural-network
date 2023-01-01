@@ -201,7 +201,7 @@ class NeuralNetwork{
     }
 
     train(predictors, classes, epochs, learningRate, batchSize){
-        const DEBUG = true;
+        const DEBUG = false;
         
         let batch = [];
 
