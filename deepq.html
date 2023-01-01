@@ -5,6 +5,8 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.5.0/p5.min.js" integrity="sha512-WJXVjqeINVpi5XXJ2jn0BSCfp0y80IKrYh731gLRnkAS9TKc5KNt/OfLtu+fCueqdWniouJ1ubM+VI/hbo7POQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
     <script src="src/activationFunctions.js"></script>
     <script src="src/neuralNetwork.js"></script>
     <script src="src/deepAgent.js"></script>
@@ -13,71 +15,108 @@
 </head>
 <body>
     <h1>Deep Q Learning</h1>
-    <canvas id="vis" width="1000px" height="500px"></canvas>
+    <h4>Random position after 5 seconds</h4>
+    <p>
+        Rewards:<br>
+        Out of bounds: -10,
+        Red: -2,
+        Yellow: 0,
+        Green: 10
+    </p>
+    <div class="env" id="env"></div>
+    <h4>Hyperparameters</h4>
+    <div id="log"></div>
     <script>
 
         const agentConfig = {
-            episodes: 1000,            
-            //episodeLength:10
-            gamma: 0.6, //Discount Factor
+            episodes: 100,            
+            episodeLength:100,
+            gamma: 0.8, //Discount Factor
             //epsilon: 0.2, //Can be a fixed value or a function with epoch parameter 
-            epsilon: epoch => epoch < 10000 ? 1 : 0.2,            
+            epsilon: epoch => epoch < 200 ? 1 : 0.2,            
             
-            epochs: 500,
+            epochs: 100,
             alpha: 0.001, //Small alpha (learningRate) to prevent overfitting to last replay
             batchSize: 30,
             replayMemSize: 100
         }
 
-        let data = {
-            map: [0, 1, 0, 0, 0, 0, 0],
-            pos: 4
-        }
+        let data = {pos: Math.random()}
 
-        const agent = new DeepAgent(1, [-1, 0, 1], agentConfig, data);
+        const agent = new DeepAgent(1, [-0.05, 0, 0.05], agentConfig, data);
 
         agent.main.layers = [
             new InputLayer(1),
             new Layer(4, 1, relu),
             new Layer(4, 4, relu),
-            new OutputLayer(3, 4, linear) //Overwrite agent network, OutputLayer needs linear activation
+            new Layer(3, 4, linear)
         ]
 
-        //Problem specific agent functions
-        agent.state = ns => {
-            if(ns)
-                agent.data.pos = ns[0];
+        /*
+        Game rules:
+            Cart can move around the map
+            Map has "bins", every bin has different reward
+            Cart loses when out of bounds
+        */
+
+        agent.state = s => {
+            if(s)
+                agent.data.pos = s[0];
             return [agent.data.pos];
         }
 
         agent.nextState = (s, a) => {
-            let action = a.a;
-            return [s[0] + action];
+            return [(s[0]) + a.a];
         }
 
         agent.isFinalState = s => {
-            if(s[0] < 0 || s[0] >= agent.data.map.length)
+            if(s[0] < 0 || s[0] > 1)
                 return true;
             return false;
         }
 
-        agent.reset = () => {
-            agent.data.pos = Math.floor(Math.random() * agent.data.map.length);
-        }
+        agent.reset = () => agent.data.pos = Math.random();
 
         agent.reward = s => {
-            if(s[0] < 0 || s[0] >= agent.data.map.length)
-                return -10;
-            if(agent.data.map[s[0]] == 1)
-                return 10;
-            return 0;
+            if(s[0] < 0 || s[0] > 1)
+                return -10;            
+            if(s[0] < 0.2 || s[0] > 0.8)
+                return -2;
+            if(s[0] < 0.4 || s[0] > 0.6)
+                return 0;
+            return 10;
         }
 
         agent.train();
 
-        for(let i = 0; i < 7; i++){
-            console.log(agent.main.forward([i]).out)
+        const sketch = p => {
+
+            p.pos = Math.random();
+
+            p.setup = () => {
+                p.createCanvas(1000, 500);
+            }
+
+            p.draw = () => {
+                p.background("red");
+                p.fill("yellow")                
+                p.rect(0.2*1000, 0, 0.6*1000, 500)
+                p.fill("green");
+                p.rect(0.4*1000, 0, 0.2*1000, 500)
+
+                if(p.frameCount%(60*5)==0)
+                    p.pos = Math.random();
+                p.pos += agent.maxAction([p.pos]).a/20;
+
+                p.fill("white");
+                p.rect(p.pos*1000-20, 450, 40, 50);
+
+            }
         }
+
+        const env = new p5(sketch, "env");
+
+        document.getElementById("log").innerHTML = JSON.stringify(agentConfig);
     </script>
 
 </body>

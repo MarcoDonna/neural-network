@@ -1,3 +1,12 @@
+/*
+Required agent functions:
+    state (next)
+    nextState (state, action)
+    isFinalState (state)
+    reset
+    reward (state)
+*/
+
 class DeepAgent{
     constructor(stateSize, actions, config, data){
         this.config = config;
@@ -30,7 +39,7 @@ class DeepAgent{
     }
 
     train(){
-        for(let e = 1; e <= this.config.episodes; e++){
+        for(let e = 1; e <= this.config.episodes * this.config.episodeLength; e++){
             let state = this.state();
             let action = this.maxAction(state);
 
@@ -38,7 +47,7 @@ class DeepAgent{
                 //Epsilon greedy explore-exploit tradeoff, can be a fixed value or a function with epoch parameter 
                 action = this.randAction();
                 
-            let nextState = this.nextState(state, action);
+            let nextState = this.nextState([...state], action);
             let reward = this.reward(nextState);
             let done = this.isFinalState(nextState);
 
@@ -55,9 +64,9 @@ class DeepAgent{
                 let stateBatch = [], predictionBatch = [];
 
                 for(let i = 0; i < this.config.replayMemSize; i++){
-                    //Random Sampling, shuffle replay data and store state and targets (updated predictions)
+                    //Random Sampling, shuffle replay data and store state and targets (updated predictions), to reduce correlation
                     let randIdx = Math.floor(Math.random() * this.replay.length);
-                    let {state, action, reward, nextState, done} = this.replay[randIdx];//this.replay[Math.floor(Math.random() * this.replay.length)];
+                    let {state, action, reward, nextState, done} = this.replay[randIdx];
                     this.replay.splice(randIdx,1);
                     let maxAction = this.maxAction(nextState);
                     let prediction = this.main.forward(state).out;
@@ -72,7 +81,6 @@ class DeepAgent{
                 }
                 //Train nn
                 this.main.train(stateBatch, predictionBatch, this.config.epochs, this.config.alpha, this.config.batchSize);
-                this.replay.mem = [];
             }                    
         }
         return this;
