@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script src="src/activationFunctions.js"></script>
+    <script src="src/neuralNetwork.js"></script>
+    <script src="src/deepAgent.js"></script>
+
+    <title>Deep Q Learning</title>
+</head>
+<body>
+    <h1>Deep Q Learning</h1>
+    <canvas id="vis" width="1000px" height="500px"></canvas>
+    <script>
+
+        const agentConfig = {
+            episodes: 1000,            
+            //episodeLength:10
+            gamma: 0.6, //Discount Factor
+            //epsilon: 0.2, //Can be a fixed value or a function with epoch parameter 
+            epsilon: epoch => epoch < 10000 ? 1 : 0.2,            
+            
+            epochs: 500,
+            alpha: 0.001, //Small alpha (learningRate) to prevent overfitting to last replay
+            batchSize: 30,
+            replayMemSize: 100
+        }
+
+        let data = {
+            map: [0, 1, 0, 0, 0, 0, 0],
+            pos: 4
+        }
+
+        const agent = new DeepAgent(1, [-1, 0, 1], agentConfig, data);
+
+        agent.main.layers = [
+            new InputLayer(1),
+            new Layer(4, 1, relu),
+            new Layer(4, 4, relu),
+            new OutputLayer(3, 4, linear) //Overwrite agent network, OutputLayer needs linear activation
+        ]
+
+        //Problem specific agent functions
+        agent.state = ns => {
+            if(ns)
+                agent.data.pos = ns[0];
+            return [agent.data.pos];
+        }
+
+        agent.nextState = (s, a) => {
+            let action = a.a;
+            return [s[0] + action];
+        }
+
+        agent.isFinalState = s => {
+            if(s[0] < 0 || s[0] >= agent.data.map.length)
+                return true;
+            return false;
+        }
+
+        agent.reset = () => {
+            agent.data.pos = Math.floor(Math.random() * agent.data.map.length);
+        }
+
+        agent.reward = s => {
+            if(s[0] < 0 || s[0] >= agent.data.map.length)
+                return -10;
+            if(agent.data.map[s[0]] == 1)
+                return 10;
+            return 0;
+        }
+
+        agent.train();
+
+        for(let i = 0; i < 7; i++){
+            console.log(agent.main.forward([i]).out)
+        }
+    </script>
+
+</body>
+</html>
