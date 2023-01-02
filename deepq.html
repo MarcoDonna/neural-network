@@ -23,27 +23,28 @@
         Yellow: 0,
         Green: 10
     </p>
+    <button id="train" onclick="startEpisode()">Train 5 Episoded</button>
     <div class="env" id="env"></div>
     <h4>Hyperparameters</h4>
     <div id="log"></div>
     <script>
 
         const agentConfig = {
-            episodes: 100,            
-            episodeLength:100,
+            episodes: 5,            
+            episodeLength:50,
             gamma: 0.8, //Discount Factor
-            //epsilon: 0.2, //Can be a fixed value or a function with epoch parameter 
-            epsilon: epoch => epoch < 200 ? 1 : 0.2,            
+            epsilon: 0.2, //Can be a fixed value or a function with epoch parameter 
+            //epsilon: epoch => epoch < 200 ? 1 : 0.2,            
             
             epochs: 100,
             alpha: 0.001, //Small alpha (learningRate) to prevent overfitting to last replay
             batchSize: 30,
-            replayMemSize: 100
+            replayMemSize: 60
         }
 
         let data = {pos: Math.random()}
 
-        const agent = new DeepAgent(1, [-0.05, 0, 0.05], agentConfig, data);
+        const agent = new DeepAgent([-0.05, 0, 0.05], agentConfig, data);
 
         agent.main.layers = [
             new InputLayer(1),
@@ -77,7 +78,7 @@
 
         agent.reset = () => agent.data.pos = Math.random();
 
-        agent.reward = s => {
+        agent.reward = (s, a, ns) => {
             if(s[0] < 0 || s[0] > 1)
                 return -10;            
             if(s[0] < 0.2 || s[0] > 0.8)
@@ -86,8 +87,6 @@
                 return 0;
             return 10;
         }
-
-        agent.train();
 
         const sketch = p => {
 
@@ -104,9 +103,9 @@
                 p.fill("green");
                 p.rect(0.4*1000, 0, 0.2*1000, 500)
 
-                if(p.frameCount%(60*5)==0)
+                if(p.frameCount%(60*2)==0 || p.pos < 0 || p.pos > 1)
                     p.pos = Math.random();
-                p.pos += agent.maxAction([p.pos]).a/20;
+                p.pos += agent.maxAction([p.pos]).a/10;
 
                 p.fill("white");
                 p.rect(p.pos*1000-20, 450, 40, 50);
@@ -117,6 +116,10 @@
         const env = new p5(sketch, "env");
 
         document.getElementById("log").innerHTML = JSON.stringify(agentConfig);
+
+        function startEpisode(){
+            agent.train();
+        }
     </script>
 
 </body>

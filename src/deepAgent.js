@@ -8,7 +8,7 @@ Required agent functions:
 */
 
 class DeepAgent{
-    constructor(stateSize, actions, config, data){
+    constructor(actions, config, data){
         this.config = config;
 
         this.action = actions;
@@ -48,7 +48,7 @@ class DeepAgent{
                 action = this.randAction();
                 
             let nextState = this.nextState([...state], action);
-            let reward = this.reward(nextState);
+            let reward = this.reward(state, action, nextState);
             let done = this.isFinalState(nextState);
 
             //Store experience in experience memory
@@ -70,13 +70,14 @@ class DeepAgent{
                     this.replay.splice(randIdx,1);
                     let maxAction = this.maxAction(nextState);
                     let prediction = this.main.forward(state).out;
+                    
                     if(done)
                         prediction[action.i] = reward;
                     else
                         prediction[action.i] = reward + this.config.gamma * maxAction.q;
 
-                        stateBatch.push(state);
-                        predictionBatch.push(prediction);
+                    stateBatch.push(state);
+                    predictionBatch.push(prediction);
 
                 }
                 //Train nn
