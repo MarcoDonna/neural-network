@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.2/jquery.min.js" integrity="sha512-tWHlutFnuG0C6nQRlpvrEhE4QpkG1nn2MOUMWmUeRePl4e3Aki0VB6W1v3oLjFtd0hVOtRQ9PHpSfN6u6/QXkQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="src/utils.js"></script>
     <script src="src/nnVis.js"></script>
     <script src="src/activationFunctions.js"></script>
     <script src="src/neuralNetwork.js"></script>
@@ -41,11 +42,11 @@
     <canvas id="network" width="1600" height="800" style="border:1px solid black"></canvas>
     <div class="parameters">        
         <label for="shape">Shape</label>
-        <input type="text" id="shape" value="4,5,5,3">
+        <input type="text" id="shape" value="4,3,3">
         <label for="epochs">Epochs</label>
-        <input type="number" id="epochs" value="5000">
+        <input type="number" id="epochs" value="1000">
         <label for="lrate">Learning Rate</label>
-        <input type="number" id="lrate" value="0.5">
+        <input type="number" id="lrate" value="0.3">
         <label for="batch">Batch Size</label>
         <input type="number" id="batch" value="5">
         <button id="train">Train NN</button>
@@ -128,28 +129,16 @@
                 actual.push(testingData[i][4]);
             }
 
-            let confusionMatrix = [];
-            for(let i = 0; i < predicted[0].length; i++){
-                confusionMatrix.push([])
-                for(let j = 0; j < predicted[0].length; j++){
-                    confusionMatrix[i].push(0);
-                }
-            }
-            for(let i = 0; i < predicted.length; i++){
-                let row = actual[i].indexOf(1);
-                let col = predicted[i].indexOf(1);
-                if(row != -1 && col != -1)
-                    confusionMatrix[row][col]++;
-            }
+            let matrix = confusionMatrix(actual, predicted);
             
             //Show performance and neural network visualization
             networkDebugger(nn, canvas, debuggerConfig);
 
             $("#confusion-matrix").html("<tr><th colspan=3>Confusion Matrix</th></tr>");
-            for(let i = 0; i < confusionMatrix.length; i++){
+            for(let i = 0; i < matrix.length; i++){
                 let row = "<tr>";
-                for(let j = 0; j < confusionMatrix.length; j++)
-                    row += `<td>${confusionMatrix[i][j]}</td>`;
+                for(let j = 0; j < matrix.length; j++)
+                    row += `<td>${matrix[i][j]}</td>`;
                 row += "</tr>";
                 $("#confusion-matrix").append(row)
             }

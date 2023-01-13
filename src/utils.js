@@ -34,3 +34,20 @@ const intercept = (a, b, c, d) => {
         return [p[0] + t * r[0], p[1] + t * r[1]];
     return Infinity;
 }
+
+const argmax = data => {
+    let value = Math.max(...data);
+    return {value, index: data.indexOf(value)};
+}
+
+const confusionMatrix = (predicted, actual) => {
+    let matrix = [];
+    for(let i = 0; i < predicted[0].length; i++){
+        matrix.push([])
+        for(let j = 0; j < predicted[0].length; j++)
+        matrix[i].push(0);
+    }
+    for(let i = 0; i < predicted.length; i++)
+        matrix[argmax(actual[i]).index][argmax(predicted[i]).index]++;
+    return matrix;
+}
