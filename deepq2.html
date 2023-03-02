@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.5.0/p5.min.js" integrity="sha512-WJXVjqeINVpi5XXJ2jn0BSCfp0y80IKrYh731gLRnkAS9TKc5KNt/OfLtu+fCueqdWniouJ1ubM+VI/hbo7POQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script src="src/activationFunctions.js"></script>
+    <script src="src/neuralNetwork.js"></script>
+    <script src="src/deepAgent.js"></script>
+
+    <script src="src/nnVis.js"></script>
+
+    <canvas id="network" width="1600" height="800" style="border:1px solid black"></canvas>
+
+    <title>Deep Q Learning</title>
+</head>
+<body>
+    <h1>Deep Q Learning</h1>
+    <h4>Random position after 5 seconds</h4>
+    <p>
+        Rewards:<br>
+        Out of bounds: -10,
+        Red: -2,
+        Yellow: 0,
+        Green: 10
+    </p>
+    <button id="train" onclick="startEpisode()">Train 5 Episoded</button>
+    <div class="env" id="env" style="border: 1px solid black"></div>
+    <h4>Hyperparameters</h4>
+    <div id="log"></div>
+    <script>
+        const debuggerConfig = {
+                fontSize: 12,
+                font: "Arial",
+                LEFT_MARGIN: 60,
+                TOP_MARGIN: 60,
+                NEURON_RADIUS: 45,
+                NEURON_PADDING_X: 180,
+                NEURON_PADDING_Y: 80
+            }
+
+        const canvas = document.getElementById("network");
+
+        const agentConfig = {
+            episodes: 500,            
+            episodeLength:400,
+            gamma: 0.4, //Discount Factor
+            //epsilon: 0.2, //Can be a fixed value or a function with epoch parameter 
+            epsilon: epoch => epoch < 200 ? 1 : 0.2,            
+            
+            epochs: 100,
+            alpha: 0.001, //Small alpha (learningRate) to prevent overfitting to last replay
+            batchSize: 30,
+            replayMemSize: 60
+        }
+
+        const agent = new DeepAgent([1, 2, 3, 4], agentConfig, {pos: [Math.random(), Math.random()]});
+
+        agent.main.layers = [
+            new InputLayer(2),
+            new Layer(4, 2, relu),
+            new Layer(4, 4, relu),
+            new Layer(4, 4, linear)
+        ]
+
+        agent.state = state => {
+            if(state){
+                agent.data.pos[0] = state[0];
+                agent.data.pos[1] = state[1];
+            }
+            return [agent.data.pos[0], agent.data.pos[1]];
+        }
+
+        agent.nextState = (state, action) => {
+            switch(action){
+                case 1:
+                    state[1] += 0.05;
+                break;
+                case 2:
+                    state[0] += 0.05;
+                break;
+                case 3:
+                    state[1] -= 0.05;
+                break;
+                case 4:
+                    state[0] -= 0.05;
+                break;
+            }
+            return state;                
+        }
+
+        agent.isFinalState = (state) => {
+            if(state[0] > 1 || state[0] < 0 || state[1] > 1 || state[1] < 0)
+                return true;
+            return false;
+        }
+
+        agent.reset = () => {
+            agent.data.pos = [Math.random(), Math.random()];
+        }
+
+        agent.reward = (state, action, nextState) => {
+            if(state[0] > 1 || state[0] < 0 || state[1] > 1 || state[1] < 0)
+                return -10;
+            if((state[0] > 0.4 || state[0] < 0.6) && (state[1] > 0.4 || state[1] < 0.6))
+                return 0;
+            return 10;
+        }
+
+        const sketch = p => {
+            p.pos = [Math.random(), Math.random()];
+
+            p.setup = () => {
+                p.createCanvas(500, 500);
+            }
+
+            p.draw = () => {
+                p.background("gray");
+                p.rect(245, 245, 10, 10)
+
+                if(p.frameCount%(60*2) == 0)
+                    p.pos = [Math.random(), Math.random()];
+
+                switch(agent.maxAction(p.pos).a){
+                    case 1:
+                        p.pos[1] += 0.01
+                        break;
+                    case 2:
+                        p.pos[0] += 0.01
+                        break;
+                    case 3:
+                        p.pos[1] -= 0.01
+                        break;
+                    case 4:
+                        p.pos[0] -= 0.01
+                        break;
+                }
+
+                p.rect(p.pos[0]*500-20, p.pos[1]*500-25, 40, 50);
+            }
+        }
+
+        const env = new p5(sketch, "env");
+
+        function startEpisode(){
+            agent.train();
+            networkDebugger(agent.main, canvas, debuggerConfig);
+        }
+    </script>
+
+</body>
+</html>
