@@ -13,6 +13,10 @@ class OutputLayer extends Layer{
         return this.outputs;
     }
 
+    get error(){
+        return this.errors; 
+    }
+
     initRandomWeights(){
         this.weights = [];
         for(let i = 0; i < this.neuronsNumber; i++){
@@ -40,6 +44,14 @@ class OutputLayer extends Layer{
             const activation = dot(this.inputs, this.weights[neuronIndex]) + this.biases[neuronIndex];
             this.activation.push(activation);
             this.outputs.push(this.activationFunction(activation));
+        }
+    }
+
+    backprop(targets){
+        this.errors = [];
+        for(let neuronIndex = 0; neuronIndex < this.neuronsNumber; neuronIndex++){
+            const error = this.activationFunctionPrime(this.activation[neuronIndex]) * (this.output[neuronIndex] - targets[neuronIndex]);
+            this.errors.push(error);
         }
     }
 }
