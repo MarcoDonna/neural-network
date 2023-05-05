@@ -9,6 +9,11 @@ function dot(a, b){
 }
 
 function add(vector, value=0){
+    if(typeof value == 'object')
+        if(vector.length == value.length)
+            return vector.map((item, index) => item+value[index])
+        else
+            throw new Error('Invalid shape');
     return vector.map(item => item+value);
 }
 
