@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NN visualisation</title>
+
+    <script src="utils.js"></script>
+    <script src="activation.js"></script>
+    <script src="layer.js"></script>
+    <script src="input-layer.js"></script>
+    <script src="dense-layer.js"></script>
+    <script src="output-layer.js"></script>
+    <script src="neural-network.js"></script>
+
+    <style>
+        #canvas{
+            border: 2px dashed red;
+        }
+    </style>
+
+</head>
+<body>
+    <canvas id="canvas" width="1600" height="800">
+
+    </canvas>
+</body>
+<script>    
+    const layers = [
+        new InputLayer(2),
+        new DenseLayer(2, 4, sigmoid, sigmoidPrime),
+        new DenseLayer(4, 4, sigmoid, sigmoidPrime),
+        new OutputLayer(4, 1, sigmoid, sigmoidPrime)
+    ];
+
+    const nn = new NeuralNetwork(layers);
+    console.log(nn.forward([0, 1]))
+    nn.backprop([0]);
+    
+    var c = document.getElementById("canvas");
+    var ctx = c.getContext("2d");
+
+    function draw(nn){
+        //Config
+        const TOP_MARGIN = 20;
+        const LEFT_MARGIN = 20;
+
+        const RADIUS = 40;
+        const X_DISTANCE = 320;
+        const Y_DISTANCE = 80;
+
+        //
+        ctx.strokeStyle = "black";
+
+        //Draw input neurons
+        const inputLayer = nn.inputLayer;
+        for(let neuronIndex = 0; neuronIndex < inputLayer.neuronsNumber; neuronIndex++){
+            ctx.beginPath();
+            ctx.arc(TOP_MARGIN + RADIUS, LEFT_MARGIN + RADIUS + (RADIUS + Y_DISTANCE) * neuronIndex , RADIUS, 0, 2 * Math.PI);
+            ctx.stroke();
+        }
+
+        //Draw hidden and output neurons
+        for(let layerIndex = 1; layerIndex < nn.depth; layerIndex++){
+
+            const layer = nn.layers[layerIndex];
+            for(let neuronIndex = 0; neuronIndex < layer.neuronsNumber; neuronIndex++){
+
+                ctx.strokeStyle = "black";
+                ctx.lineWidth = 1;
+
+                ctx.beginPath();
+                ctx.arc(TOP_MARGIN + RADIUS +(RADIUS + X_DISTANCE) * layerIndex, LEFT_MARGIN + RADIUS + (RADIUS + Y_DISTANCE) * neuronIndex, RADIUS, 0, 2 * Math.PI);
+                ctx.stroke();
+
+                //Draw bias
+                const bias = layer.biases[neuronIndex]
+                ctx.strokeStyle = bias > 0 ? 'green' : 'red';
+                ctx.lineWidth = 1 + 4 * bias;
+
+                ctx.beginPath();
+                ctx.moveTo(TOP_MARGIN + (RADIUS + X_DISTANCE) * layerIndex, LEFT_MARGIN + RADIUS + (RADIUS + Y_DISTANCE) * neuronIndex);
+                ctx.lineTo(TOP_MARGIN + (RADIUS + X_DISTANCE) * layerIndex, LEFT_MARGIN + RADIUS + (RADIUS + Y_DISTANCE) * neuronIndex - 50);
+                ctx.stroke();
+                
+                //Draw weights
+                const weights = layer.weights[neuronIndex];
+                for(let weightIndex = 0; weightIndex < weights.length; weightIndex++){
+                    const weight = weights[weightIndex];
+
+                    //Color and size of weight
+                    ctx.strokeStyle = weight > 0 ? 'green' : 'red';
+                    ctx.lineWidth = 1 + 4 * weight;
+
+                    ctx.beginPath();
+                    ctx.moveTo(TOP_MARGIN + (RADIUS + X_DISTANCE) * layerIndex, LEFT_MARGIN + RADIUS + (RADIUS + Y_DISTANCE) * neuronIndex);
+                    ctx.lineTo(TOP_MARGIN + 2 * RADIUS + (RADIUS + X_DISTANCE) * (layerIndex-1), LEFT_MARGIN + RADIUS + (RADIUS + Y_DISTANCE) * weightIndex);                    
+                    ctx.stroke();
+                }
+            }
+        }
+    }
+
+    draw(nn);
+</script>
+</html>
+
+
+
