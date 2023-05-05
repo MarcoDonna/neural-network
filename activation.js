@@ -26,6 +26,6 @@ function leakyRelu(x){
     return x < 0 ? 0.002 * x : x;
 }
 
-function leakyRelyPrime(x){
+function leakyReluPrime(x){
     return x < 0 ? 0.002 : 1;
 }
