@@ -22,4 +22,39 @@ class NeuralNetwork{
         for(let layerIndex = this.depth - 2; layerIndex > 0; layerIndex--)
             this.layers[layerIndex].backprop(this.layers[layerIndex+1]);
     }
+
+    train(features, targets, epochs, learningRate, batchSize){
+        const batchesFeatures = [];
+        const batchesTargets = [];
+
+        const batchNum = Math.ceil(features.length/batchSize);
+
+        for(let i = 0; i < features.length; i += batchNum){
+            batchesFeatures.push(features.slice(i, i + batchNum));
+            batchesTargets.push(targets.slice(i, i + batchNum));
+        }
+
+        for(let e = 0; e < epochs; e++)
+            for(let i = 0; i < batchesFeatures.length; i++)
+                this.trainSingleBatch(batchesFeatures[i], batchesTargets[i], learningRate, batchSize);
+    }
+
+    trainSingleBatch(features, targets, learningRate){
+        for(let recordIndex = 0; recordIndex < features.length; recordIndex++){
+            this.forward(features[recordIndex]);
+            this.backprop(targets[recordIndex]);
+        }
+        this.adjustBiases(learningRate, features.length);
+        this.adjustWeights(learningRate, features.length);
+    }
+
+    adjustWeights(learningRate, batchSize){
+        for(let layerIndex = 1; layerIndex < this.depth; layerIndex++)
+            this.layers[layerIndex].adjustWeights(learningRate, batchSize);
+    }
+
+    adjustBiases(learningRate, batchSize){
+        for(let layerIndex = 1; layerIndex < this.depth; layerIndex++)
+            this.layers[layerIndex].adjustBiases(learningRate, batchSize);
+    }
 }
