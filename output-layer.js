@@ -81,4 +81,22 @@ class OutputLayer extends Layer{
     weightsToNeuron(prevNeuronIndex){
         return this.weights.map(neuron => neuron[prevNeuronIndex])
     }
+    
+    adjustBiases(learningRate, batchSize){
+        for(let neuronIndex = 0; neuronIndex < this.neuronsNumber; neuronIndex++){
+            const delta = -(learningRate/batchSize) * this.biasesPartials[neuronIndex];
+            this.biases[neuronIndex] += delta;
+        }
+        this.initPartialBiasesDerivatives();
+    }
+
+    adjustWeights(learningRate, batchSize){
+        for(let neuronIndex = 0; neuronIndex < this.neuronsNumber; neuronIndex++){
+            for(let weightIndex = 0; weightIndex < this.weightsNumber; weightIndex++){
+                const delta = -(learningRate/batchSize) * this.weightsPartials[neuronIndex][weightIndex];
+                this.weights[neuronIndex][weightIndex] += delta;
+            }
+        }
+        this.initPartialWeightDerivatives();
+    }
 }
