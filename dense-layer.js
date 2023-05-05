@@ -13,6 +13,10 @@ class DenseLayer extends Layer{
         return this.outputs;
     }
 
+    get error(){
+        return this.errors; 
+    }
+
     initRandomWeights(){
         this.weights = [];
         for(let i = 0; i < this.neuronsNumber; i++){
@@ -41,5 +45,19 @@ class DenseLayer extends Layer{
             this.activation.push(activation);
             this.outputs.push(this.activationFunction(activation));
         }
+    }
+
+    backprop(nextLayer){
+        const nextLayerErrors = nextLayer.error;
+        
+        this.errors = [];
+        for(let neuronIndex = 0; neuronIndex < this.neuronsNumber; neuronIndex++){
+            const error = this.activationFunctionPrime(this.activation[neuronIndex]) * dot(nextLayerErrors, nextLayer.weightsToNeuron(neuronIndex));
+            this.errors.push(error);
+        }
+    }
+
+    weightsToNeuron(prevNeuronIndex){
+        return this.weights.map(neuron => neuron[prevNeuronIndex])
     }
 }
