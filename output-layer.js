@@ -54,4 +54,8 @@ class OutputLayer extends Layer{
             this.errors.push(error);
         }
     }
+
+    weightsToNeuron(prevNeuronIndex){
+        return this.weights.map(neuron => neuron[prevNeuronIndex])
+    }
 }
