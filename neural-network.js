@@ -18,12 +18,16 @@ class NeuralNetwork{
     }
 
     backprop(targets){
+        //Output layer error
         this.outputLayer.backprop(targets);
+
+        //Backprop error in hidden layers
         for(let layerIndex = this.depth - 2; layerIndex > 0; layerIndex--)
             this.layers[layerIndex].backprop(this.layers[layerIndex+1]);
     }
 
     train(features, targets, epochs, learningRate, batchSize){
+        //Split data in batches
         const batchesFeatures = [];
         const batchesTargets = [];
 
@@ -34,12 +38,14 @@ class NeuralNetwork{
             batchesTargets.push(targets.slice(i, i + batchNum));
         }
 
+        //Train model
         for(let e = 0; e < epochs; e++)
             for(let i = 0; i < batchesFeatures.length; i++)
                 this.trainSingleBatch(batchesFeatures[i], batchesTargets[i], learningRate, batchSize);
     }
 
     trainSingleBatch(features, targets, learningRate){
+        //Do a forward and backprop pass for each X, Y pari in batch
         for(let recordIndex = 0; recordIndex < features.length; recordIndex++){
             this.forward(features[recordIndex]);
             this.backprop(targets[recordIndex]);
