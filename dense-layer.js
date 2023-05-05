@@ -7,6 +7,9 @@ class DenseLayer extends Layer{
 
         this.initRandomBiases();
         this.initRandomWeights();
+
+        this.initPartialBiasesDerivatives();
+        this.initPartialWeightDerivatives();
     }
 
     get output(){
@@ -32,6 +35,21 @@ class DenseLayer extends Layer{
             this.biases.push(Math.random());
     }
 
+    initPartialWeightDerivatives(){
+        this.weightsPartials = [];
+        for(let i = 0; i < this.neuronsNumber; i++){
+            this.weightsPartials.push([]);
+            for(let j = 0; j < this.weightsNumber; j++)
+                this.weightsPartials[i].push(0);
+        }
+    }
+
+    initPartialBiasesDerivatives(){
+        this.biasesPartials = [];
+        for(let i = 0; i < this.neuronsNumber; i++)
+            this.biasesPartials.push(0);
+    }
+
     forward(prevLayer){
         if(!prevLayer.output || prevLayer.output.length != this.weightsNumber)
             throw new Error('Invalid input');
@@ -54,6 +72,11 @@ class DenseLayer extends Layer{
         for(let neuronIndex = 0; neuronIndex < this.neuronsNumber; neuronIndex++){
             const error = this.activationFunctionPrime(this.activation[neuronIndex]) * dot(nextLayerErrors, nextLayer.weightsToNeuron(neuronIndex));
             this.errors.push(error);
+
+            //Calc and store partial derivatives (both biases and weights)
+            this.biasesPartials[neuronIndex] += error;
+            for(let weightIndex = 0; weightIndex < this.weightsNumber; weightIndex++)
+                this.weightsPartials[neuronIndex][weightIndex] += error * this.inputs[weightIndex];
         }
     }
 
