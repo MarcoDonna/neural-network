@@ -14,6 +14,14 @@ function tanhPrime(x){
     return 1 - Math.pow(Math.tanh(x), 2);
 }
 
+function linear(x){
+    return x;
+}
+
+function linearPrime(x){
+    return 1;
+}
+
 function relu(x){
     return x < 0 ? 0 : x;
 }
