@@ -66,6 +66,9 @@ class OutputLayer extends Layer{
     }
 
     backprop(targets){
+        if(targets.length != this.neuronsNumber)
+            throw new Error('Invalid targets');
+
         this.errors = [];
         for(let neuronIndex = 0; neuronIndex < this.neuronsNumber; neuronIndex++){
             const error = this.activationFunctionPrime(this.activation[neuronIndex]) * (this.output[neuronIndex] - targets[neuronIndex]);
