@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NN visualisation</title>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gpu.js/1.0.2/gpu.min.js" integrity="sha512-cr2nuynSuSV6MGtWlympE0qd1g1TKBuEhv9lcfbW8HrE9UbPPc8zMwcje1fb9w2kzxqRnsizh6c+YbE6Ab7wpg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
     <script src="utils.js"></script>
     <script src="activation.js"></script>
     <script src="layer.js"></script>
@@ -26,34 +28,43 @@
 
     </canvas>
 </body>
-<script>    
+<script type="module">    
+
+    //TODO ADD es6 export to layer, nn and other
+    //-Improve parameters validity check
+    //Add GPU support
+    //Add Momentum
+    //Add other types of layers (conv, dropout, pooling)
+
+    //import NeuralNetwork from './neural-network';
+
     const layers = [
         new InputLayer(2),
-        new DenseLayer(2, 4, sigmoid, sigmoidPrime),
-        new DenseLayer(4, 4, sigmoid, sigmoidPrime),
-        new OutputLayer(4, 1, sigmoid, sigmoidPrime)
+        new DenseLayer(2, 6, sigmoid, sigmoidPrime),
+        new OutputLayer(6, 1, sigmoid, sigmoidPrime)
     ];
 
     const nn = new NeuralNetwork(layers);
-    console.log(nn.forward([0, 1]))
-    nn.backprop([0]);
+
+    const features = [[0, 0], [0, 1], [1, 0], [1, 1]];
+    const xor_classes = [[0], [1], [1], [0]];
+
+    nn.train(features, xor_classes, 5000, 0.1, 4);
     
     var c = document.getElementById("canvas");
     var ctx = c.getContext("2d");
 
-    function draw(nn){
+    function draw(ctx, nn){
         //Config
         const TOP_MARGIN = 20;
         const LEFT_MARGIN = 20;
 
         const RADIUS = 40;
         const X_DISTANCE = 320;
-        const Y_DISTANCE = 80;
-
-        //
-        ctx.strokeStyle = "black";
+        const Y_DISTANCE = 80;        
 
         //Draw input neurons
+        ctx.strokeStyle = "black";
         const inputLayer = nn.inputLayer;
         for(let neuronIndex = 0; neuronIndex < inputLayer.neuronsNumber; neuronIndex++){
             ctx.beginPath();
@@ -77,7 +88,7 @@
                 //Draw bias
                 const bias = layer.biases[neuronIndex]
                 ctx.strokeStyle = bias > 0 ? 'green' : 'red';
-                ctx.lineWidth = 1 + 4 * bias;
+                ctx.lineWidth = 1 + 2 * bias;
 
                 ctx.beginPath();
                 ctx.moveTo(TOP_MARGIN + (RADIUS + X_DISTANCE) * layerIndex, LEFT_MARGIN + RADIUS + (RADIUS + Y_DISTANCE) * neuronIndex);
@@ -91,7 +102,7 @@
 
                     //Color and size of weight
                     ctx.strokeStyle = weight > 0 ? 'green' : 'red';
-                    ctx.lineWidth = 1 + 4 * weight;
+                    ctx.lineWidth = 1 + 2 * weight;
 
                     ctx.beginPath();
                     ctx.moveTo(TOP_MARGIN + (RADIUS + X_DISTANCE) * layerIndex, LEFT_MARGIN + RADIUS + (RADIUS + Y_DISTANCE) * neuronIndex);
@@ -102,7 +113,7 @@
         }
     }
 
-    draw(nn);
+    draw(ctx, nn);
 </script>
 </html>
 
