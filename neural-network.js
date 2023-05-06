@@ -7,13 +7,17 @@ class NeuralNetwork{
         this.outputLayer = layers[this.depth-1];
     }
 
-    forward(inputs){
+    predict(inputs){
+        return this.forward(inputs, false);
+    }
+
+    forward(inputs, training){
         //Input layer forward pass
         this.inputLayer.forward(inputs);
 
         //Hidden and output layers forward pass
         for(let layerIndex = 1; layerIndex < this.depth; layerIndex++)
-            this.layers[layerIndex].forward(this.layers[layerIndex-1]);
+            this.layers[layerIndex].forward(this.layers[layerIndex-1], training);
         return this.outputLayer.output;
     }
 
@@ -47,7 +51,7 @@ class NeuralNetwork{
     trainSingleBatch(features, targets, learningRate){
         //Do a forward and backprop pass for each X, Y pari in batch
         for(let recordIndex = 0; recordIndex < features.length; recordIndex++){
-            this.forward(features[recordIndex]);
+            this.forward(features[recordIndex], true /*true when during training */);
             this.backprop(targets[recordIndex]);
         }
         this.adjustBiases(learningRate, features.length);
