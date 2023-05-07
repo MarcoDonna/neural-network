@@ -37,3 +37,12 @@ function leakyRelu(x){
 function leakyReluPrime(x){
     return x < 0 ? 0.002 : 1;
 }
+
+function elu(x){
+    //https://ml-cheatsheet.readthedocs.io/en/latest/activation_functions.html#elu
+    return x < 0 ? 0.02 * (Math.exp(z) - 1) : x;
+}
+
+function eluPrime(x){
+    return x < 0 ? 0.02 * Math.exp(x) : 1;
+}
