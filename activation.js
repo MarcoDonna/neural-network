@@ -30,19 +30,19 @@ function reluPrime(x){
     return x < 0 ? 0 : 1;
 }
 
-function leakyRelu(x){
-    return x < 0 ? 0.002 * x : x;
+function leakyRelu(x, alpha=0.02){
+    return x < 0 ? alpha * x : x;
 }
 
-function leakyReluPrime(x){
-    return x < 0 ? 0.002 : 1;
+function leakyReluPrime(x, alpha=0.02){
+    return x < 0 ? alpha : 1;
 }
 
-function elu(x){
+function elu(x, alpha=0.02){
     //https://ml-cheatsheet.readthedocs.io/en/latest/activation_functions.html#elu
-    return x < 0 ? 0.02 * (Math.exp(z) - 1) : x;
+    return x < 0 ? alpha * (Math.exp(z) - 1) : x;
 }
 
-function eluPrime(x){
-    return x < 0 ? 0.02 * Math.exp(x) : 1;
+function eluPrime(x, alpha=0.02){
+    return x < 0 ? alpha * Math.exp(x) : 1;
 }
