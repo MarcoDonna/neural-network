@@ -1,5 +1,5 @@
 class DropoutLayer extends Layer{
-    constructor(weightsNumber, neuronsNumber, activationFunction, activationFunctionPrime, config){
+    constructor(weightsNumber, neuronsNumber, activationFunction, activationFunctionPrime, config={}){
         super(weightsNumber, neuronsNumber);
 
         this.activationFunction = activationFunction;
