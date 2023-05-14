@@ -9,7 +9,8 @@ class ConvolutionalLayer{
         this.filter = {};
         this.filter.size = config.size || 5;
         this.filter.stride = config.stride || 1;
-        //this.flatten = config.flatten || true;
+        
+        this.flatten = config.flatten || true;
 
         this.filter.numberHeigth = (this.inputWidth - this.filter.size) / this.filter.stride + 1;
         this.filter.numberWidth = (this.inputHeigth - this.filter.size) / this.filter.stride + 1;
@@ -20,6 +21,8 @@ class ConvolutionalLayer{
     }
 
     get output(){
+        if(this.flatten == true)
+            return this.outputFlat;
         return this.outputs;
     }
 
@@ -87,5 +90,21 @@ class ConvolutionalLayer{
                 this.outputs[filterRowIndex].push(this.activationFunction(activation));
             }
         }        
+    }
+
+    backprop(nextLayer){
+        const nextLayerErrors = nextLayer.errors;
+
+        this.errors = [];
+        for(let filterRowIndex = 0; filterRowIndex < this.filter.numberHeigth; filterRowIndex++){
+            this.errors.push([]);
+            for(let filterColIndex = 0; filterColIndex < this.filter.numberWidth; filterColIndex++){
+                //each filter can be considered a neuron, need to "de-flatten" error
+                //row * size + col
+                const weightsToNeuron = nextLayer.weightsToNeuron(filterRowIndex * this.filter.size + filterColIndex);
+                const error = this.activationFunctionPrime(this.activation[filterRowIndex][filterColIndex]) * dot(nextLayerErrors, weightsToNeuron);
+                this.errors[filterRowIndex].push(error);
+            }
+        }
     }
 }
