@@ -1,9 +1,55 @@
 <script src="activation.js"></script>
+<script src="utils.js"></script>
+<script src="layer.js"></script>
+<script src="input2d-layer.js"></script>
 <script src="convolutional-layer.js"></script>
+<script src="output-layer.js"></script>
+<script src="dense-layer.js"></script>
+<script src="neural-network.js"></script>
 
 <script>
+    const data = [
+        [
+            [0, 0, 1, 0, 0],
+            [0, 0, 1, 0, 0],
+            [1, 1, 1, 1, 1],
+            [0, 0, 1, 0, 0],
+            [0, 0, 1, 0, 0]
+        ],
+        [
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0]
+        ],
+        [
+            [0, 0, 1, 0, 0],
+            [0, 0, 1, 0, 0],
+            [0, 0, 1, 0, 0],
+            [0, 0, 1, 0, 0],
+            [0, 0, 1, 0, 0]
+        ],
+        [
+            [1, 0, 0, 0, 1],
+            [0, 1, 0, 1, 0],
+            [0, 0, 1, 0, 0],
+            [0, 1, 0, 1, 0],
+            [1, 0, 0, 0, 1]
+        ]
+    ]
 
-    const conv = new ConvolutionalLayer(16, 16, sigmoid, sigmoidPrime, {size: 5, stride: 1});
-    console.log(conv);
+    const targets = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]];
 
+    const layers = [
+        new Input2DLayer(5, 5),
+        new ConvolutionalLayer(5, 5, sigmoid, sigmoidPrime, {size: 3, stride: 1, flatten: true}),
+        //new DenseLayer(9, 3, sigmoid, sigmoidPrime),
+        new OutputLayer(9, 4, sigmoid, sigmoidPrime)
+    ];
+    
+
+    const nn = new NeuralNetwork(layers);
+
+    nn.train(data, targets, 50000, 0.1, 1);
 </script>
