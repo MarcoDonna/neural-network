@@ -23,6 +23,13 @@ class ConvolutionalLayer{
         return this.outputs;
     }
 
+    get outputFlat(){
+        let ret = [];
+        for(let i = 0; i < this.outputs.length; i++)
+            ret.push(...this.outputs[i]);
+        return ret;
+    }
+
     get error(){
         return this.errors;
     }
