@@ -18,6 +18,9 @@ class ConvolutionalLayer{
     
         this.initRandomBiases();
         this.initRandomWeights();
+
+        this.initPartialBiasesDerivatives();
+        this.initPartialWeightDerivatives();    
     }
 
     get output(){
@@ -57,6 +60,33 @@ class ConvolutionalLayer{
                     this.weights[filterRowIndex][filterColIndex].push([]);
                     for(let j = 0; j < this.filter.size; j++)
                         this.weights[filterRowIndex][filterColIndex][i].push(Math.random());
+                }
+            }
+        }
+    }
+
+    initPartialBiasesDerivatives(){
+        this.biasesPartials = [];
+
+        for(let filterRowIndex = 0; filterRowIndex < this.filter.numberHeigth; filterRowIndex++){
+            this.biasesPartials.push([]);
+            for(let filterColIndex = 0; filterColIndex < this.filter.numberWidth; filterColIndex++){
+                this.biasesPartials[filterRowIndex].push(0);
+            }
+        }
+    }
+
+    initPartialWeightDerivatives(){
+        this.weightsPartials = [];
+
+        for(let filterRowIndex = 0; filterRowIndex < this.filter.numberHeigth; filterRowIndex++){
+            this.weightsPartials.push([]);
+            for(let filterColIndex = 0; filterColIndex < this.filter.numberWidth; filterColIndex++){
+                this.weightsPartials[filterRowIndex].push([]);
+                for(let i = 0; i < this.filter.size; i++){
+                    this.weightsPartials[filterRowIndex][filterColIndex].push([]);
+                    for(let j = 0; j < this.filter.size; j++)
+                        this.weightsPartials[filterRowIndex][filterColIndex][i].push(0);
                 }
             }
         }
@@ -104,7 +134,39 @@ class ConvolutionalLayer{
                 const weightsToNeuron = nextLayer.weightsToNeuron(filterRowIndex * this.filter.size + filterColIndex);
                 const error = this.activationFunctionPrime(this.activation[filterRowIndex][filterColIndex]) * dot(nextLayerErrors, weightsToNeuron);
                 this.errors[filterRowIndex].push(error);
+
+                //calc gradients
+                this.biasesPartials[filterRowIndex][filterColIndex] += error;
+                for(let i = 0; i < this.filter.size; i++)
+                    for(let j = 0; j < this.filter.size; j++){
+                        const inputRow = filterRowIndex * this.filter.stride + i;
+                        const inputCol = filterColIndex * this.filter.stride + j;
+                        const input = this.inputs[inputRow][inputCol];
+                        this.weightsPartials[filterRowIndex][filterColIndex][i][j] += error * input;
+                    }
             }
         }
+    }
+
+    adjustBiases(learningRate, batchSize){
+        for(let filterRowIndex = 0; filterRowIndex < this.filter.numberHeigth; filterRowIndex++)
+            for(let filterColIndex = 0; filterColIndex < this.filter.numberWidth; filterColIndex++){
+                const delta = -(learningRate/batchSize) * this.biasesPartials[filterRowIndex][filterColIndex];
+                this.biases[filterRowIndex][filterColIndex] += delta;
+            }
+        this.initPartialBiasesDerivatives();
+    }
+
+    adjustWeights(learningRate, batchSize){
+        for(let filterRowIndex = 0; filterRowIndex < this.filter.numberHeigth; filterRowIndex++)
+            for(let filterColIndex = 0; filterColIndex < this.filter.numberWidth; filterColIndex++){
+                
+                for(let i = 0; i < this.filter.size; i++)
+                    for(let j = 0; j < this.filter.size; j++){
+                        const delta = -(learningRate/batchSize) * this.weightsPartials[filterRowIndex][filterColIndex][i][j];
+                        this.weights[filterRowIndex][filterColIndex][i][j] += delta;
+                    }
+            }
+        this.initPartialWeightDerivatives();
     }
 }
