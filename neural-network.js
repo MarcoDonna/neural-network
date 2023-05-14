@@ -43,9 +43,12 @@ class NeuralNetwork{
         }
 
         //Train model
-        for(let e = 0; e < epochs; e++)
+        for(let e = 0; e <= epochs; e++){
+            if(e % 1000 == 0)
+                console.log(`${e}/${epochs}`);
             for(let i = 0; i < batchesFeatures.length; i++)
                 this.trainSingleBatch(batchesFeatures[i], batchesTargets[i], learningRate, batchSize);
+        }
     }
 
     trainSingleBatch(features, targets, learningRate){
