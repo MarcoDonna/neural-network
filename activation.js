@@ -46,3 +46,13 @@ function elu(x, alpha=0.02){
 function eluPrime(x, alpha=0.02){
     return x < 0 ? alpha * Math.exp(x) : 1;
 }
+
+if(typeof module !== 'undefined' && module.exports)
+    module.exports = {
+        sigmoid, sigmoidPrime,
+        tanh, tanhPrime,
+        linear, linearPrime,
+        relu, reluPrime,
+        leakyRelu, leakyReluPrime,
+        elu, eluPrime
+    };

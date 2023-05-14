@@ -170,3 +170,6 @@ class ConvolutionalLayer{
         this.initPartialWeightDerivatives();
     }
 }
+
+if(typeof module !== 'undefined' && module.exports)
+    module.exports = ConvolutionalLayer;

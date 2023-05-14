@@ -1,3 +1,6 @@
+const {dot} = require('./utils');
+const Layer = require('./layer');
+
 class InputLayer extends Layer{
     constructor(neuronsNumber){
         super(null, neuronsNumber);
@@ -13,3 +16,6 @@ class InputLayer extends Layer{
         this.outputs = inputs;
     }
 }
+
+if(typeof module !== 'undefined' && module.exports)
+    module.exports = InputLayer;

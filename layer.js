@@ -5,14 +5,13 @@ class Layer{
     }
 
     forward(){
-        this.errorMissingImplementation();
+        throw new Error('Missing impl');
     }
 
     backprop(){        
-        this.errorMissingImplementation();
-    }
-
-    #errorMissingImplementation(){
         throw new Error('Missing impl');
     }
 }
+
+if(typeof module !== 'undefined' && module.exports)
+    module.exports = Layer;

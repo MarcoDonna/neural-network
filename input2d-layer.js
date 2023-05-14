@@ -14,3 +14,6 @@ class Input2DLayer{
         this.outputs = inputs;
     }
 }
+
+if(typeof module !== 'undefined' && module.exports)
+    module.exports = Input2DLayer;

@@ -68,3 +68,6 @@ class NeuralNetwork{
             this.layers[layerIndex].adjustBiases(learningRate, batchSize);
     }
 }
+
+if(typeof module !== 'undefined' && module.exports)
+    module.exports = NeuralNetwork;

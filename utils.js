@@ -24,3 +24,6 @@ function sum(vector){
 function avg(vector){
     return sum(vector) / vector.length;
 }
+
+if(typeof module !== 'undefined' && module.exports)
+    module.exports = {dot, add, sum, avg};

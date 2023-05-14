@@ -1,3 +1,6 @@
+const {dot} = require('./utils');
+const Layer = require('./layer');
+
 class DropoutLayer extends Layer{
     constructor(weightsNumber, neuronsNumber, activationFunction, activationFunctionPrime, config={}){
         super(weightsNumber, neuronsNumber);
@@ -127,3 +130,6 @@ class DropoutLayer extends Layer{
         this.initPartialWeightDerivatives();
     }
 }
+
+if(typeof module !== 'undefined' && module.exports)
+    module.exports = DropoutLayer;

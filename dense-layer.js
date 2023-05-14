@@ -1,3 +1,6 @@
+const {dot} = require('./utils');
+const Layer = require('./layer');
+
 class DenseLayer extends Layer{
     constructor(weightsNumber, neuronsNumber, activationFunction, activationFunctionPrime){
         super(weightsNumber, neuronsNumber);
@@ -102,3 +105,6 @@ class DenseLayer extends Layer{
         this.initPartialWeightDerivatives();
     }
 }
+
+if(typeof module !== 'undefined' && module.exports)
+    module.exports = DenseLayer;

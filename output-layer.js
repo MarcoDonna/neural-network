@@ -1,3 +1,6 @@
+const {dot} = require('./utils');
+const Layer = require('./layer');
+
 class OutputLayer extends Layer{
     constructor(weightsNumber, neuronsNumber, activationFunction, activationFunctionPrime){
         super(weightsNumber, neuronsNumber);
@@ -103,3 +106,6 @@ class OutputLayer extends Layer{
         this.initPartialWeightDerivatives();
     }
 }
+
+if(typeof module !== 'undefined' && module.exports)
+    module.exports = OutputLayer;
