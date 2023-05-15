@@ -4,7 +4,7 @@ function dot(a, b){
 
     let ret = 0;
     for(let i = 0; i < a.length; i++)
-        ret += a[i] * b[i];
+        ret += (a[i] === undefined ? 0 : a[i]) * (b[i] === undefined ? 0 : b[i]);
     return ret;
 }
 
@@ -25,5 +25,12 @@ function avg(vector){
     return sum(vector) / vector.length;
 }
 
+function flatten(matrix){
+    let ret = [];
+    for(let i = 0; i < matrix.length; i++)
+        ret.push(...matrix[i]);
+    return ret;
+}
+
 if(typeof module !== 'undefined' && module.exports)
-    module.exports = {dot, add, sum, avg};
+    module.exports = {dot, add, sum, avg, flatten};
