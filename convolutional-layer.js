@@ -1,3 +1,6 @@
+const {dot} = require('./utils');
+const Layer = require('./layer');
+
 class ConvolutionalLayer{
     constructor(inputWidth, inputHeigth, activationFunction, activationFunctionPrime, config={}){
         this.inputWidth = inputWidth;
