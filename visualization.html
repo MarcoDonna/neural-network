@@ -44,12 +44,18 @@
         new OutputLayer(6, 1, sigmoid, sigmoidPrime)
     ];
 
-    const nn = new NeuralNetwork(layers);
+    const n1 = new NeuralNetwork(layers);
 
     const features = [[0, 0], [0, 1], [1, 0], [1, 1]];
     const xor_classes = [[0], [1], [1], [0]];
 
-    nn.train(features, xor_classes, 5000, 0.1, 4);
+    n1.train(features, xor_classes, 5000, 0.1, 4);
+
+    const d = n1.save();
+    console.log(d);
+
+    const nn = new NeuralNetwork();
+    nn.load(d);
     
     var c = document.getElementById("canvas");
     var ctx = c.getContext("2d");
