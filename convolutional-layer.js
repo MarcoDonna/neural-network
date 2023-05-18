@@ -101,6 +101,7 @@ class ConvolutionalLayer{
         this.activation = [];
         this.outputs = [];
 
+        //For each filter
         for(let filterRowIndex = 0; filterRowIndex < this.filter.numberHeigth; filterRowIndex++){
             this.activation.push([]);
             this.outputs.push([]);
@@ -112,9 +113,9 @@ class ConvolutionalLayer{
                 const filterStartCol = filterColIndex * this.filter.stride;
 
                 for(let i = 0; i < this.filter.size; i++){
-                    const inputsSubset = this.inputs[filterStartRow].slice(filterStartCol, filterStartCol + this.filter.size);
-                    activation += dot(inputsSubset, this.weights[filterRowIndex][filterColIndex][i]);
-                }                
+                    const inputSubset = this.inputs[filterStartRow+i].slice(filterStartCol, filterStartCol + this.filter.size);
+                    activation += dot(inputSubset, this.weights[filterRowIndex][filterColIndex][i]);
+                }          
 
                 this.activation[filterRowIndex].push(activation);
                 this.outputs[filterRowIndex].push(this.activationFunction(activation));
