@@ -1,55 +1,158 @@
-<script src="activation.js"></script>
-<script src="utils.js"></script>
-<script src="layer.js"></script>
-<script src="input2d-layer.js"></script>
-<script src="convolutional-layer.js"></script>
-<script src="output-layer.js"></script>
-<script src="dense-layer.js"></script>
-<script src="neural-network.js"></script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
 
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js" integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g=" crossorigin="anonymous"></script>
+    
+    <script src="activation.js"></script>
+    <script src="utils.js"></script>
+    <script src="layer.js"></script>
+    <script src="input2d-layer.js"></script>
+    <script src="convolutional-layer.js"></script>
+    <script src="output-layer.js"></script>
+    <script src="dense-layer.js"></script>
+    <script src="neural-network.js"></script>
+</head>
+<body>
+    <div id="filter" class="wrp">
+        <canvas width="700px" height="700px">
+
+        </canvas>
+    </div>
+    <br><br>
+    <div id="out">
+        <canvas width="700px" height="700px"></canvas>
+    </div>
+    
 <script>
     const data = [
         [
-            [0, 0, 1, 0, 0],
-            [0, 0, 1, 0, 0],
-            [1, 1, 1, 1, 1],
-            [0, 0, 1, 0, 0],
-            [0, 0, 1, 0, 0]
+            [0, 0, 1, 1, 0, 0],
+            [0, 0, 1, 1, 0, 0],
+            [1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1],
+            [0, 0, 1, 1, 0, 0],
+            [0, 0, 1, 1, 0, 0],
         ],
         [
-            [0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0],
-            [1, 1, 1, 1, 1],
-            [0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0]
+            [0, 0, 1, 1, 0, 0],
+            [0, 0, 1, 1, 0, 0],
+            [0, 0, 1, 1, 0, 0],
+            [0, 0, 1, 1, 0, 0],
+            [0, 0, 1, 1, 0, 0],
+            [0, 0, 1, 1, 0, 0],
         ],
         [
-            [0, 0, 1, 0, 0],
-            [0, 0, 1, 0, 0],
-            [0, 0, 1, 0, 0],
-            [0, 0, 1, 0, 0],
-            [0, 0, 1, 0, 0]
-        ],
-        [
-            [1, 0, 0, 0, 1],
-            [0, 1, 0, 1, 0],
-            [0, 0, 1, 0, 0],
-            [0, 1, 0, 1, 0],
-            [1, 0, 0, 0, 1]
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
         ]
     ]
 
-    const targets = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]];
+    const targets = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0]];
 
     const layers = [
-        new Input2DLayer(5, 5),
-        new ConvolutionalLayer(5, 5, sigmoid, sigmoidPrime, {size: 3, stride: 3, flatten: true}),
-        new DenseLayer(4, 4, sigmoid, sigmoidPrime),
+        new Input2DLayer(6, 6),
+        new ConvolutionalLayer(6, 6, sigmoid, sigmoidPrime, {size: 3, stride: 3, flatten: true}),
+        //new DenseLayer(36, 12, sigmoid, sigmoidPrime),
         new OutputLayer(4, 4, sigmoid, sigmoidPrime)
     ];
     
 
     const nn = new NeuralNetwork(layers);
 
-    nn.train(data, targets, 20000, 0.1, 1);
+    let before = nn.save();
+
+    nn.train(data, targets, 500000, 0.2, 2);
+
+    let after = nn.save();
+
+
+    console.log(after == before);
+
+    function visualizeFilter(wrapperId, filters){
+        const wrapper = $(`#${wrapperId}`);
+        const canvas = wrapper.children('canvas')[0];
+        const ctx = canvas.getContext('2d');
+
+        const CANVAS_WIDTH = 700;
+
+        let filterMin = filters[0][0][0][0], filterMax = filters[0][0][0][0];
+
+        for(let filterRow = 0; filterRow < filters.length; filterRow++)
+            for(let filterCol = 0; filterCol < filters[filterRow].length; filterCol++){
+                const filter = filters[filterRow][filterCol];
+                for(let i = 0; i < filter.length; i++)
+                    for(let j = 0; j < filter[i].length; j++){
+                        if(filter[i][j] < filterMin)
+                            filterMin = filter[i][j];
+                        if(filter[i][j] > filterMax)
+                            filterMax = filter[i][j];
+                    }
+            }
+
+        const squareSide = CANVAS_WIDTH / (filters.length * filters[0][0].length);
+
+        for(let filterRow = 0; filterRow < filters.length; filterRow++)
+            for(let filterCol = 0; filterCol < filters[filterRow].length; filterCol++){
+                const filter = filters[filterRow][filterCol];
+
+                for(let i = 0; i < filter.length; i++)
+                    for(let j = 0; j < filter[i].length; j++){
+                        const grayValue = (filter[j][i] - filterMin) / (filterMax - filterMin) * 255;
+                        ctx.fillStyle = `rgba(${grayValue}, ${grayValue}, ${grayValue}, 1)`
+                        ctx.fillRect(filterRow * filter.length * squareSide + squareSide * i, filterCol * filter.length * squareSide + squareSide * j, squareSide, squareSide);
+                    }
+            }
+    }
+
+    function visualizeGridData(wrapperId, data, invert){
+        const wrapper = $(`#${wrapperId}`);
+        const canvas = wrapper.children('canvas')[0];
+        const ctx = canvas.getContext('2d');
+
+        const CANVAS_WIDTH = 700;
+        const sizeX = CANVAS_WIDTH / data[0].length;
+        const sizeY = CANVAS_WIDTH / data.length;
+
+        let min = data[0][0], max = data[0][0];
+
+        for(let i = 0; i < data.length; i++)
+            for(let j = 0; j < data[i].length; j++){
+                if(data[i][j] < min)
+                    min = data[i][j];
+                if(data[i][j] > max)
+                    max = data[i][j];
+            }
+
+        for(let i = 0; i < data.length; i++)
+            for(let j = 0; j < data[i].length; j++){
+                const grayValue = (data[i][j] - min) / (max - min) * 255;
+                ctx.fillStyle = `rgba(${grayValue}, ${grayValue}, ${grayValue}, 1)`;
+                ctx.fillRect(sizeX * j, sizeY * i, sizeX, sizeY);
+            }
+    }
+
+    visualizeFilter("filter", nn.layers[1].weights)
+    
+    nn.predict([
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+        ]);
+
+    visualizeGridData("out", nn.layers[1].outputs, false);
 </script>
+</body>
+</html>
+
