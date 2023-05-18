@@ -4,7 +4,7 @@ function dot(a, b){
 
     let ret = 0;
     for(let i = 0; i < a.length; i++)
-        ret += a[i] * b[i];
+        ret += (a[i] || 0) * (b[i] || 0);
     return ret;
 }
 
