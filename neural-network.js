@@ -1,5 +1,5 @@
 class NeuralNetwork{
-    constructor(layers){
+    constructor(layers=[]){
         this.layers = layers;
         this.depth = layers.length;
 
@@ -66,5 +66,27 @@ class NeuralNetwork{
     adjustBiases(learningRate, batchSize){
         for(let layerIndex = 1; layerIndex < this.depth; layerIndex++)
             this.layers[layerIndex].adjustBiases(learningRate, batchSize);
+    }
+
+    export(){
+        return {
+            layers: this.layers,
+            depth: this.depth
+        }
+    }
+
+    import(data){
+        this.layers = data.layers;
+        this.depth = data.depth;
+        this.inputLayer = this.layers[0];
+        this.outputLayer = this.layers[this.depth-1];
+    }
+
+    save(){
+        return JSON.stringify(this.export());
+    }
+
+    load(json){
+        this.import(JSON.parse(json));
     }
 }
