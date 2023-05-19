@@ -1,9 +1,12 @@
 class OutputLayer extends Layer{
-    constructor(weightsNumber, neuronsNumber, activationFunction, activationFunctionPrime){
+    constructor(weightsNumber, neuronsNumber, activationFunction, activationFunctionPrime, config={}){
         super(weightsNumber, neuronsNumber);
 
         this.activationFunction = activationFunction;
         this.activationFunctionPrime = activationFunctionPrime;
+
+        this.regularization = config.regularization;
+        this.regularizationRate = config.regularizationRate || 0.01;
 
         this.initRandomBiases();
         this.initRandomWeights();
@@ -87,7 +90,13 @@ class OutputLayer extends Layer{
     
     adjustBiases(learningRate, batchSize){
         for(let neuronIndex = 0; neuronIndex < this.neuronsNumber; neuronIndex++){
-            const delta = -(learningRate/batchSize) * this.biasesPartials[neuronIndex];
+            let regularizationFactor = 0;
+            if(this.regularization == 'l1')
+                regularizationFactor = Math.sign(this.biases[neuronIndex]) * this.regularizationRate;
+            else if(this.regularization == 'l2')
+                regularizationFactor = 2 * this.biases[neuronIndex] * this.regularizationRate;
+
+            const delta = -(learningRate/batchSize) * (this.biasesPartials[neuronIndex] + regularizationFactor);
             this.biases[neuronIndex] += delta;
         }
         this.initPartialBiasesDerivatives();
@@ -95,8 +104,14 @@ class OutputLayer extends Layer{
 
     adjustWeights(learningRate, batchSize){
         for(let neuronIndex = 0; neuronIndex < this.neuronsNumber; neuronIndex++){
-            for(let weightIndex = 0; weightIndex < this.weightsNumber; weightIndex++){
-                const delta = -(learningRate/batchSize) * this.weightsPartials[neuronIndex][weightIndex];
+            for(let weightIndex = 0; weightIndex < this.weightsNumber; weightIndex++){ 
+                let regularizationFactor = 0;
+                if(this.regularization == 'l1')
+                    regularizationFactor = Math.sign(this.weights[neuronIndex][weightIndex]) * this.regularizationRate;
+                else if(this.regularization == 'l2')
+                    regularizationFactor = 2 * this.weights[neuronIndex][weightIndex] * this.regularizationRate;
+
+                const delta = -(learningRate/batchSize) * (this.weightsPartials[neuronIndex][weightIndex] + regularizationFactor);
                 this.weights[neuronIndex][weightIndex] += delta;
             }
         }
