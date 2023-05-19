@@ -11,6 +11,7 @@
     <script src="activation.js"></script>
     <script src="utils.js"></script>
     <script src="layer.js"></script>
+    <script src="input-layer.js"></script>
     <script src="input2d-layer.js"></script>
     <script src="convolutional-layer.js"></script>
     <script src="output-layer.js"></script>
@@ -29,7 +30,7 @@
     </div>
     
 <script>
-    const data = [
+    let data = [
         [
             [0, 0, 1, 1, 0, 0],
             [0, 0, 1, 1, 0, 0],
@@ -53,15 +54,43 @@
             [1, 1, 1, 1, 1, 1],
             [0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0],
+        ],
+        [
+            [0, 0, 0, 0, 0, 1],
+            [0, 0, 0, 0, 1, 1],
+            [0, 0, 0, 1, 1, 0],
+            [0, 0, 0, 1, 1, 0],
+            [0, 0, 0, 0, 1, 1],
+            [0, 0, 0, 0, 0, 1],
         ]
     ]
 
-    const targets = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0]];
+
+    data = data.map(input => flatten(input));
+
+    function flatten(matrix){
+        let ret = [];
+        for(let i = 0; i < matrix.length; i++)
+            ret.push(...matrix[i]);
+        return ret;
+    }
+
+    function unflatten(vector, cols){
+        let ret = [];
+        while (vector.length > 0) 
+            ret.push(vector.splice(0, cols));
+        return ret;
+    }
+    
+
+    const targets = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]];
 
     const layers = [
-        new Input2DLayer(6, 6),
-        new ConvolutionalLayer(6, 6, sigmoid, sigmoidPrime, {size: 3, stride: 3, flatten: true}),
+        //new Input2DLayer(6, 6),
+        //new ConvolutionalLayer(6, 6, sigmoid, sigmoidPrime, {size: 3, stride: 3, flatten: true}),
         //new DenseLayer(36, 12, sigmoid, sigmoidPrime),
+        new InputLayer(6 * 6),
+        new DenseLayer(6 * 6, 4, sigmoid, sigmoidPrime),
         new OutputLayer(4, 4, sigmoid, sigmoidPrime)
     ];
     
@@ -70,7 +99,7 @@
 
     let before = nn.save();
 
-    nn.train(data, targets, 500000, 0.2, 2);
+    nn.train(data, targets, 100000, 0.02, 1);
 
     let after = nn.save();
 
@@ -140,18 +169,10 @@
             }
     }
 
-    visualizeFilter("filter", nn.layers[1].weights)
+    //visualizeFilter("filter", nn.layers[1].weights)    
     
-    nn.predict([
-            [0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0],
-            [1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1],
-            [0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0],
-        ]);
 
-    visualizeGridData("out", nn.layers[1].outputs, false);
+    visualizeGridData("out", unflatten(nn.layers[1].weights[2], 6), true);
 </script>
 </body>
 </html>
