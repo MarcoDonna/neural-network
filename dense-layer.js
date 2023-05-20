@@ -91,7 +91,7 @@ class DenseLayer extends Layer{
         for(let neuronIndex = 0; neuronIndex < this.neuronsNumber; neuronIndex++){
             let regularizationFactor = 0;
             if(this.regularization == 'l1')
-                regularizationFactor = Math.sign(this.biases[neuronIndex]) * this.regularizationRate;
+                regularizationFactor = Math.abs(this.biases[neuronIndex]) * this.regularizationRate;
             else if(this.regularization == 'l2')
                 regularizationFactor = 2 * this.biases[neuronIndex] * this.regularizationRate;
 
@@ -106,7 +106,7 @@ class DenseLayer extends Layer{
             for(let weightIndex = 0; weightIndex < this.weightsNumber; weightIndex++){ 
                 let regularizationFactor = 0;
                 if(this.regularization == 'l1')
-                    regularizationFactor = Math.sign(this.weights[neuronIndex][weightIndex]) * this.regularizationRate;
+                    regularizationFactor = Math.abs(this.weights[neuronIndex][weightIndex]) * this.regularizationRate;
                 else if(this.regularization == 'l2')
                     regularizationFactor = 2 * this.weights[neuronIndex][weightIndex] * this.regularizationRate;
 
