@@ -5,6 +5,11 @@ class RecurrentLayer extends Layer{
         this.activationFunction = activationFunction;
         this.activationFunctionPrime = activationFunctionPrime;
 
+        this.gradientClipMagnitude = config.gradientClipMagnitude;
+        
+        this.regularization = config.regularization;
+        this.regularizationRate = config.regularizationRate || 0.01;
+
         this.initRandomBiases();
         this.initRandomWeights();
         this.initRandomRecurrentWeights();
@@ -122,7 +127,14 @@ class RecurrentLayer extends Layer{
         //Just like dense
         //Here (and in all the adjust methods) batchsize is the amount of timesteps in training data
         for(let neuronIndex = 0; neuronIndex < this.neuronsNumber; neuronIndex++){
-            const delta = -(learningRate/batchSize) * this.biasesPartials[neuronIndex];
+            //Apply regularization
+            let regularizationFactor = 0;
+            if(this.regularization == 'l1')
+                regularizationFactor = Math.abs(this.biases[neuronIndex]) * this.regularizationRate;
+            else if(this.regularization == 'l2')
+                regularizationFactor = 2 * this.biases[neuronIndex] * this.regularizationRate;
+
+            const delta = -(learningRate/batchSize) * (this.biasesPartials[neuronIndex] + regularizationFactor);
             this.biases[neuronIndex] += delta;
         }
         this.initPartialBiasesDerivatives();
@@ -132,7 +144,14 @@ class RecurrentLayer extends Layer{
         //Just like dense
         for(let neuronIndex = 0; neuronIndex < this.neuronsNumber; neuronIndex++){
             for(let weightIndex = 0; weightIndex < this.weightsNumber; weightIndex++){ 
-                const delta = -(learningRate/batchSize) * this.weightsPartials[neuronIndex][weightIndex];
+                //Apply regularization
+                let regularizationFactor = 0;
+                if(this.regularization == 'l1')
+                    regularizationFactor = Math.abs(this.weights[neuronIndex][weightIndex]) * this.regularizationRate;
+                else if(this.regularization == 'l2')
+                    regularizationFactor = 2 * this.weights[neuronIndex][weightIndex] * this.regularizationRate;
+
+                const delta = -(learningRate/batchSize) * (this.weightsPartials[neuronIndex][weightIndex] + regularizationFactor);
                 this.weights[neuronIndex][weightIndex] += delta;
             }
         }
@@ -142,7 +161,14 @@ class RecurrentLayer extends Layer{
     adjustRecurrentWeights(learningRate, batchSize){
         //Really similar to biases in dense
         for(let neuronIndex = 0; neuronIndex < this.neuronsNumber; neuronIndex++){
-            const delta = -(learningRate/batchSize) * this.recurrentweightsPartials[neuronIndex];
+            //Apply regularization
+            let regularizationFactor = 0;
+            if(this.regularization == 'l1')
+                regularizationFactor = Math.abs(this.recurrentweights[neuronIndex]) * this.regularizationRate;
+            else if(this.regularization == 'l2')
+                regularizationFactor = 2 * this.recurrentweights[neuronIndex] * this.regularizationRate;
+
+            const delta = -(learningRate/batchSize) * (this.recurrentweightsPartials[neuronIndex] + regularizationFactor);
             this.recurrentweights[neuronIndex] += delta;
         }
         this.initPartialRecurrentWeightsDerivatives();
