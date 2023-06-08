@@ -122,6 +122,12 @@ class RecurrentLayer extends Layer{
                     this.weightsPartials[neuronIndex][weightIndex] += error * this.inputs[weightIndex];
         }
     }
+    
+    adjustLearnableParameters(learningRate, batchSize){
+        this.adjustBiases(learningRate, batchSize);
+        this.adjustWeights(learningRate, batchSize);
+        this.adjustRecurrentWeights(learningRate, batchSize);
+    }
 
     adjustBiases(learningRate, batchSize){
         //Just like dense

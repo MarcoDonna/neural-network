@@ -108,6 +108,11 @@ class DropoutLayer extends Layer{
     weightsToNeuron(prevNeuronIndex){
         return this.weights.map(neuron => neuron[prevNeuronIndex])
     }
+    
+    adjustLearnableParameters(learningRate, batchSize){
+        this.adjustBiases(learningRate, batchSize);
+        this.adjustWeights(learningRate, batchSize);
+    }
 
     adjustBiases(learningRate, batchSize){
         for(let neuronIndex = 0; neuronIndex < this.neuronsNumber; neuronIndex++){

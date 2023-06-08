@@ -149,6 +149,11 @@ class ConvolutionalLayer{
         }
     }
 
+    adjustLearnableParameters(learningRate, batchSize){
+        this.adjustBiases(learningRate, batchSize);
+        this.adjustWeights(learningRate, batchSize);
+    }
+
     adjustBiases(learningRate, batchSize){
         for(let filterRowIndex = 0; filterRowIndex < this.filter.numberHeigth; filterRowIndex++)
             for(let filterColIndex = 0; filterColIndex < this.filter.numberWidth; filterColIndex++){
