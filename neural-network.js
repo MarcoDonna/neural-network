@@ -54,18 +54,12 @@ class NeuralNetwork{
             this.forward(features[recordIndex], true /*true when during training */);
             this.backprop(targets[recordIndex]);
         }
-        this.adjustBiases(learningRate, features.length);
-        this.adjustWeights(learningRate, features.length);
+        this.adjustLearnableParameters(learningRate, features.length);
     }
 
-    adjustWeights(learningRate, batchSize){
+    adjustLearnableParameters(learningRate, batchSize){
         for(let layerIndex = 1; layerIndex < this.depth; layerIndex++)
-            this.layers[layerIndex].adjustWeights(learningRate, batchSize);
-    }
-
-    adjustBiases(learningRate, batchSize){
-        for(let layerIndex = 1; layerIndex < this.depth; layerIndex++)
-            this.layers[layerIndex].adjustBiases(learningRate, batchSize);
+            this.layers[layerIndex].adjustLearnableParameters(learningRate, batchSize);
     }
 
     export(){
