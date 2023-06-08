@@ -44,7 +44,7 @@ class RecurrentNeuralNetwork extends NeuralNetwork{
                 this.backprop(timeSeriesTargets[partialRecordIndex]);
             }
 
-            this.adjustLearnableParameters(learningRate, timeSeriesFeatures.length);
+            this.adjustLearnableParameters(learningRate, subsetTimeSeriesEnd - subsetTimeSeriesStart);
             this.clearHiddenState();
         }
     }
