@@ -23,78 +23,39 @@
     <script src="recurrent-layer.js"></script>
     <script src="output-layer.js"></script>
     <script src="neural-network.js"></script>
-
-    
-
+    <script src="recurrent-neural-network.js"></script>
 </head>
 <body>
     <h1>RNN</h1>
     <div style="width: 1600px;"><canvas id="main"></canvas></div>
     <script >
-
+        
+        let f = [];
         let t = [];
-        for(let i = 0; i < 20; i++)
+        for(let i = 0; i < 20; i++){
+            f.push([1]);
             t.push([(1 + Math.cos(i/20 * 2 * Math.PI))  / 2]);
-
-        console.log(t);
-
-        const il = new InputLayer(1);
-        const rl = new RecurrentLayer(1, 6, sigmoid, sigmoidPrime);
-        const dl = new DenseLayer(6, 4, sigmoid, sigmoidPrime);
-        const ol = new OutputLayer(4, 1, sigmoid, sigmoidPrime);
-
-        function forward(i){
-            il.forward(i);
-            rl.forward(il);
-            dl.forward(rl);
-            ol.forward(dl);
-            //ol.forward(rl);
-            return ol.output;
         }
 
-        function backprop(t){
-            ol.backprop(t);
-            dl.backprop(ol);
-            rl.backprop(dl);
-            //rl.backprop(ol);
-        }
+        const layers = [
+            new InputLayer(1),
+            new RecurrentLayer(1, 10, sigmoid, sigmoidPrime),
+            new DenseLayer(10, 18, sigmoid, sigmoidPrime),
+            new OutputLayer(18, 1, sigmoid, sigmoidPrime)
+        ];
 
-        function adjustAll(ts){
-            const lr = 0.1;
-            //const ts = 5;
+        const rnn = new RecurrentNeuralNetwork(layers);
 
-            rl.adjustBiases(lr, ts);
-            rl.adjustWeights(lr, ts);
-            rl.adjustRecurrentWeights(lr, ts);
+        rnn.train([f], [t], 10000, 0.1);
+        
+        console.log("Training done");
 
-            dl.adjustBiases(lr, ts);
-            dl.adjustWeights(lr, ts);
+        const prediction = [];
 
-            ol.adjustBiases(lr, ts);
-            ol.adjustWeights(lr, ts);
-        }
-
-        for(let i = 0; i < 10000; i++){
-            if((i+1)%1000==0)
-                console.log(i+1);
-            for(let j = 0; j < 20; j++){
-                let tempTargets = t.slice(Math.max(0), t.length - j);
-
-                for(let k = 0; k < tempTargets.length; k++){
-                    forward([0]);
-                    backprop([tempTargets[k]]);
-                }
-
-                adjustAll(tempTargets.length);
-                rl.clearHiddenState();
-            }            
-
-        }
-
-        let prediction = [];
-        for(let i = 0; i < 21; i++){
-            prediction.push(forward([0])[0]);
-        }
+        for(let i = 0; i < 20; i++)
+            prediction.push(rnn.forward([1])[0]);
+        rnn.clearHiddenState();
+        
 
         new Chart(
             document.getElementById('main'),
