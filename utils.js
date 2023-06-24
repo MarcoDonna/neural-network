@@ -24,3 +24,13 @@ function sum(vector){
 function avg(vector){
     return sum(vector) / vector.length;
 }
+
+function meanSquaredError(a, b){
+    if(a.length != b.length)
+        throw new Error('Invalid shape');
+
+    let mse = 0;
+    for(let i = 0; i < a.length; i++)
+        mse += Math.pow(a[i] - b[i], 2);
+    return mse / a.length;
+}
